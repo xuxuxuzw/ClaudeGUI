@@ -1,0 +1,280 @@
+import SwiftUI
+
+struct SidebarSessionView: View {
+    @ObservedObject var sessionManager: SessionManager
+    @ObservedObject var callback: SidebarCallback
+    @ObservedObject var localization = Localization.shared
+    @ObservedObject var themeManager = ThemeManager.shared
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text(L10n.agents)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Spacer()
+                // Theme toggle
+                Button(action: { themeManager.next() }) {
+                    Text(themeName(themeManager.current))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Color.accentColor)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(AppTheme.accentBg)
+                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.sm))
+                }
+                .buttonStyle(.plain)
+                // Language toggle
+                Button(action: { localization.toggle() }) {
+                    Text(localization.current == .chinese ? "EN" : "中")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Color.accentColor)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(AppTheme.accentBg)
+                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.sm))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, AppSpacing.xl)
+            .padding(.vertical, 10)
+
+            Divider()
+                .overlay(AppTheme.divider)
+
+            ScrollView {
+                VStack(spacing: 0) {
+                    allSessionsButton
+
+                    newSessionButton
+
+                    Divider()
+                        .overlay(AppTheme.divider)
+                        .padding(.vertical, 6)
+
+                    sessionGroup(
+                        title: L10n.awaitingInput,
+                        icon: "clock",
+                        color: .green,
+                        groupKey: "awaiting",
+                        sessions: sessionManager.sessions.filter { $0.status == "waiting" }
+                    )
+
+                    sessionGroup(
+                        title: L10n.working,
+                        icon: "gear",
+                        color: .orange,
+                        groupKey: "working",
+                        sessions: sessionManager.sessions.filter { $0.status == "working" }
+                    )
+
+                    sessionGroup(
+                        title: L10n.completed,
+                        icon: "checkmark.circle",
+                        color: .blue,
+                        groupKey: "completed",
+                        sessions: sessionManager.sessions.filter { $0.status == "completed" }
+                    )
+
+                    sessionGroup(
+                        title: L10n.idle,
+                        icon: "moon",
+                        color: .gray,
+                        groupKey: "idle",
+                        sessions: sessionManager.sessions.filter { $0.status != "waiting" && $0.status != "working" && $0.status != "completed" }
+                    )
+                }
+                .padding(.horizontal, 8)
+            }
+
+            Divider()
+                .overlay(AppTheme.divider)
+
+            HStack {
+                Text(L10n.agentCount(sessionManager.sessions.count))
+                    .font(.system(size: 11))
+                    .foregroundStyle(AppTheme.textMuted)
+                Spacer()
+            }
+            .padding(.horizontal, AppSpacing.xl)
+            .padding(.vertical, 6)
+        }
+        .background(AppTheme.bgBase)
+    }
+
+    private func themeName(_ scheme: ColorScheme) -> String {
+        let isCN = localization.current == .chinese
+        switch scheme {
+        case .basic:      return isCN ? "基础" : "Basic"
+        case .clearDark:  return isCN ? "暗色" : "Dark"
+        case .clearLight: return isCN ? "亮色" : "Light"
+        }
+    }
+
+    // MARK: - All Sessions Button
+
+    private var allSessionsButton: some View {
+        Button(action: {
+            sessionManager.activeSessionId = nil
+            callback.onOverview?()
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: "square.grid.2x2")
+                    .font(.system(size: 12))
+                    .frame(width: 20)
+                    .foregroundStyle(Color.accentColor)
+                Text(L10n.allSessions)
+                    .font(.system(size: 12, weight: sessionManager.activeSessionId == nil ? .semibold : .regular))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Spacer()
+                if sessionManager.activeSessionId == nil {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color.accentColor)
+                        .frame(width: 3, height: 16)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(sessionManager.activeSessionId == nil ? AppTheme.accentBg : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: AppRadius.md))
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - New Session Button
+
+    private var newSessionButton: some View {
+        Button(action: {
+            callback.onNewSession?()
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 13))
+                    .frame(width: 20)
+                    .foregroundStyle(Color.accentColor.opacity(0.8))
+                Text(L10n.newSession)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(AppTheme.textSecondary)
+                Spacer()
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Session Group
+
+    @State private var expandedGroups: Set<String> = ["awaiting", "working", "completed", "idle"]
+
+    @ViewBuilder
+    private func sessionGroup(title: String, icon: String, color: Color, groupKey: String, sessions: [Session]) -> some View {
+        let isExpanded = expandedGroups.contains(groupKey)
+
+        VStack(spacing: 0) {
+            Button(action: {
+                if isExpanded {
+                    expandedGroups.remove(groupKey)
+                } else {
+                    expandedGroups.insert(groupKey)
+                }
+            }) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(color)
+                        .frame(width: 8, height: 8)
+                    Text(title)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Spacer()
+                    Text("\(sessions.count)")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(AppTheme.bgSurface)
+                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.sm))
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(AppTheme.textMuted)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
+                .padding(.vertical, 4)
+                .padding(.horizontal, 4)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                if sessions.isEmpty {
+                    Text(L10n.noSessions)
+                        .font(.system(size: 11))
+                        .foregroundStyle(AppTheme.textMuted)
+                        .padding(.leading, 20)
+                        .padding(.vertical, 4)
+                } else {
+                    ForEach(sessions) { session in
+                        sessionRow(session: session, color: color)
+                            .padding(.leading, 4)
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    // MARK: - Session Row
+
+    private func sessionRow(session: Session, color: Color) -> some View {
+        let isActive = sessionManager.activeSessionId == session.id
+
+        return Button(action: {
+            sessionManager.switchToSession(id: session.id)
+            callback.onSelect?(session.id)
+        }) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(color)
+                    .frame(width: 6, height: 6)
+
+                Text(session.shortId)
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundStyle(AppTheme.textMuted)
+
+                Text(session.name)
+                    .font(.system(size: 12, weight: isActive ? .semibold : .regular))
+                    .foregroundStyle(isActive ? AppTheme.textPrimary : AppTheme.textSecondary)
+                    .lineLimit(1)
+
+                Spacer()
+
+                if isActive {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color.accentColor)
+                        .frame(width: 3, height: 16)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(isActive ? AppTheme.accentBg : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: AppRadius.md))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button(action: {
+                callback.onStop?(session.id)
+            }) {
+                Label(L10n.stopSession, systemImage: "stop.circle")
+            }
+
+            Button(role: .destructive, action: {
+                callback.onClose?(session.id)
+            }) {
+                Label(L10n.deleteSession, systemImage: "trash")
+            }
+        }
+    }
+}
