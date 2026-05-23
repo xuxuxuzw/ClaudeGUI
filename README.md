@@ -64,18 +64,26 @@ cd ClaudeGUI
 # Build with Swift Package Manager
 swift build
 
-# Or open in Xcode
-open ClaudeGUI.xcodeproj
+# Create .app bundle
+APP="ClaudeGUI.app"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+cp .build/debug/ClaudeGUI "$APP/Contents/MacOS/"
+cp Sources/ClaudeGUI/AppIcon.icns "$APP/Contents/Resources/"
+cp -R .build/debug/SwiftTerm_SwiftTerm.bundle "$APP/Contents/Resources/"
+
+# Or open Package.swift directly in Xcode
+open Package.swift
 ```
 
 ## Project Structure
 
 ```
 ClaudeGUI/
-├── ClaudeGUI.app/              # Prebuilt application
-├── ClaudeGUI.xcodeproj/        # Xcode project
 ├── Package.swift               # SPM dependencies (SwiftTerm)
 ├── Sources/ClaudeGUI/
+│   ├── AppIcon.icns            # App icon
+│   ├── Assets.xcassets/        # Asset catalog (AppIcon)
+│   ├── Info.plist              # App metadata + icon reference
 │   ├── ClaudeGUIApp.swift      # App entry point
 │   ├── Theme.swift             # Theme system (Basic / Clear Dark / Clear Light)
 │   ├── Localization.swift      # Bilingual support (zh/en)

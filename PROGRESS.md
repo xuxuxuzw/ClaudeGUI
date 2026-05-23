@@ -39,7 +39,7 @@
 7. ✅ **claude 命令路径** — 自动查找 nvm 安装的 claude 二进制，解决 GUI 应用 PATH 问题
 8. ✅ **复制/粘贴** — 在 App 层面转发 Cmd+C/V/A 到活跃终端
 9. ✅ **架构重构** — 从多标签改为侧边栏 + 单终端模式
-10. ✅ **Xcode 项目创建** — 手动生成 `ClaudeGUI.xcodeproj`，含 SwiftTerm SPM 依赖
+10. ✅ **应用图标** — 使用 Claude Code 像素机器人 logo，生成 AppIcon.icns 和 Assets.xcassets
 11. ✅ **App Sandbox 关闭** — entitlements 文件设置 `com.apple.security.app-sandbox = false`
 12. ✅ **标签栏集成** — TabBarView 通过 NSHostingView 嵌入 MainWindowController
 13. ✅ **主标签/子标签** — Overview 标签显示所有 agents 总览，子标签为各 agent 终端
@@ -47,9 +47,13 @@
 15. ✅ **轮询修复** — `claude agents --json` 子进程输出解析修复，交互式会话无 name/status 字段需 optional
 16. ✅ **管道死锁修复** — readDataToEndOfFile 移到 waitUntilExit 之前避免管道缓冲区满导致死锁
 
-## Xcode 打开方式
+## 构建方式
 
-直接用 Xcode 打开 `ClaudeGUI/ClaudeGUI.xcodeproj`，Cmd+R 运行。
+```bash
+swift build
+# 然后手动创建 .app bundle（见 README）
+# 或直接用 Xcode 打开 Package.swift
+```
 
 ## 核心架构
 

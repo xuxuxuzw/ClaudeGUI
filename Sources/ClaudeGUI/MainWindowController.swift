@@ -67,6 +67,7 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
         setupSidebarCallbacks()
         launchOverviewTerminal()
         startPolling()
+        EnvironmentChecker.shared.check()
     }
 
     deinit {
@@ -375,8 +376,6 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
                     .buttonStyle(.plain)
                     .background(Color.accentColor)
                     .clipShape(RoundedRectangle(cornerRadius: AppRadius.lg))
-                    .disabled(taskText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .opacity(taskText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1.0)
                 }
             }
             .padding(24)
@@ -396,24 +395,83 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
 
     private func launchNewSession() {
         let state = NewSessionState()
+        if let wsPath = sessionManager.activeWorkspacePath {
+            state.directoryURL = URL(fileURLWithPath: wsPath)
+        }
 
         func submit() {
             let task = state.taskText.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !task.isEmpty else { return }
             newSessionDialogWindow?.close()
             newSessionDialogWindow = nil
 
-            let tv = makeTerminal()
+            let directory = state.directoryURL.path
             let claudePath = getClaudePath()
-            let escaped = task.replacingOccurrences(of: "\"", with: "\\\"")
-            tv.startProcess(
-                executable: "/bin/zsh",
-                args: ["-l", "-c", "\(claudePath) --bg \"\(escaped)\""],
-                environment: nil,
-                currentDirectory: state.directoryURL.path
-            )
-            terminalContainer.addSubview(tv)
-            showTerminal(tv)
+            let cmd: String
+            if task.isEmpty {
+                cmd = "\(claudePath) --bg"
+            } else {
+                let escaped = task.replacingOccurrences(of: "\"", with: "\\\"")
+                cmd = "\(claudePath) --bg \"\(escaped)\""
+            }
+
+            // Run --bg as a process to capture session ID
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+            process.arguments = ["-l", "-c", cmd]
+            process.currentDirectoryURL = URL(fileURLWithPath: directory)
+
+            let outPipe = Pipe()
+            process.standardOutput = outPipe
+            process.standardError = outPipe
+
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                do {
+                    try process.run()
+                } catch {
+                    NSLog("ClaudeGUI: launchNewSession run error: %@", error.localizedDescription)
+                    return
+                }
+                let data = outPipe.fileHandleForReading.readDataToEndOfFile()
+                process.waitUntilExit()
+
+                let output = String(data: data, encoding: .utf8) ?? ""
+                NSLog("ClaudeGUI: --bg output: %@", output)
+
+                // Parse shortId — find the first 8-char hex token after "backgrounded"
+                let lines = output.components(separatedBy: .newlines)
+                var parsedShortId = ""
+                for line in lines {
+                    if line.contains("backgrounded") {
+                        // Extract token like "3ad3789f" — 8 hex chars
+                        let tokens = line.components(separatedBy: .whitespacesAndNewlines)
+                        for token in tokens {
+                            let clean = token.trimmingCharacters(in: .punctuationCharacters)
+                            if clean.count >= 6 && clean.count <= 12 && clean.allSatisfy(\.isHexDigit) {
+                                parsedShortId = clean
+                                break
+                            }
+                        }
+                        break
+                    }
+                }
+
+                NSLog("ClaudeGUI: parsed shortId=%@", parsedShortId)
+
+                guard let self = self, !parsedShortId.isEmpty else { return }
+
+                // Immediately poll to get the session into agentSessions
+                self.pollAgentSessionsSync()
+
+                DispatchQueue.main.async {
+                    self.syncSessionManagerFromAgents()
+
+                    if let agent = self.agentSessions.first(where: {
+                        $0.kind == "background" && $0.sessionId.hasPrefix(parsedShortId)
+                    }), let uuid = UUID(uuidString: agent.sessionId) {
+                        self.enterAgentSession(sessionId: uuid)
+                    }
+                }
+            }
         }
 
         func cancel() {
@@ -521,6 +579,44 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
             }
         } catch {
             NSLog("ClaudeGUI: poll decode error: %@", error.localizedDescription)
+        }
+    }
+
+    /// Synchronous version — updates agentSessions directly (call from background thread).
+    private func pollAgentSessionsSync() {
+        let claudePath = getClaudePath()
+        let cmd = "\(claudePath) agents --json"
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        process.arguments = ["-l", "-c", cmd]
+
+        let outPipe = Pipe()
+        let errPipe = Pipe()
+        process.standardOutput = outPipe
+        process.standardError = errPipe
+
+        do {
+            try process.run()
+        } catch {
+            NSLog("ClaudeGUI: pollSync run error: %@", error.localizedDescription)
+            return
+        }
+
+        let data = outPipe.fileHandleForReading.readDataToEndOfFile()
+        let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+
+        if process.terminationStatus != 0 || data.isEmpty {
+            let stderr = String(data: errData, encoding: .utf8) ?? ""
+            NSLog("ClaudeGUI: pollSync failed, status=%d, err=%@", process.terminationStatus, stderr)
+            return
+        }
+
+        do {
+            agentSessions = try JSONDecoder().decode([AgentSession].self, from: data)
+        } catch {
+            NSLog("ClaudeGUI: pollSync decode error: %@", error.localizedDescription)
         }
     }
 

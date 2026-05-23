@@ -64,18 +64,26 @@ cd ClaudeGUI
 # 使用 Swift Package Manager 构建
 swift build
 
-# 或者使用 Xcode 打开
-open ClaudeGUI.xcodeproj
+# 创建 .app bundle
+APP="ClaudeGUI.app"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+cp .build/debug/ClaudeGUI "$APP/Contents/MacOS/"
+cp Sources/ClaudeGUI/AppIcon.icns "$APP/Contents/Resources/"
+cp -R .build/debug/SwiftTerm_SwiftTerm.bundle "$APP/Contents/Resources/"
+
+# 或者直接用 Xcode 打开 Package.swift
+open Package.swift
 ```
 
 ## 项目结构
 
 ```
 ClaudeGUI/
-├── ClaudeGUI.app/              # 预编译应用
-├── ClaudeGUI.xcodeproj/        # Xcode 项目
 ├── Package.swift               # SPM 依赖配置（SwiftTerm）
 ├── Sources/ClaudeGUI/
+│   ├── AppIcon.icns            # 应用图标
+│   ├── Assets.xcassets/        # 资源目录（AppIcon）
+│   ├── Info.plist              # 应用配置 + 图标引用
 │   ├── ClaudeGUIApp.swift      # 应用入口
 │   ├── Theme.swift             # 主题系统（基础/暗色/亮色）
 │   ├── Localization.swift      # 中英文支持
@@ -112,7 +120,7 @@ MainWindowController (NSWindowController)
 
 ## TODO
 
-- [ ] **环境检测** — 启动时自动检测 Node.js、Claude Code CLI、登录状态，检测结果展示在 app 右上角
+- [x] **环境检测** — 启动时自动检测 Node.js、Claude Code CLI、登录状态，检测结果展示在 app 右上角
 - [ ] **工作区** — 引入工作区（Workspace）概念，按工作目录分组，每个工作区下独立管理四个状态分组（等待输入、工作中、已完成、空闲），每个状态组下再挂载具体会话
 
 ## 许可证

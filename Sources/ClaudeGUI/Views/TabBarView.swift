@@ -5,6 +5,8 @@ struct SidebarSessionView: View {
     @ObservedObject var callback: SidebarCallback
     @ObservedObject var localization = Localization.shared
     @ObservedObject var themeManager = ThemeManager.shared
+    @ObservedObject var envChecker = EnvironmentChecker.shared
+    @State private var showEnvPopover = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -14,6 +16,16 @@ struct SidebarSessionView: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer()
+                // Environment status
+                Button(action: { showEnvPopover.toggle() }) {
+                    Circle()
+                        .fill(envColor)
+                        .frame(width: 8, height: 8)
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: $showEnvPopover) {
+                    envPopoverContent
+                }
                 // Theme toggle
                 Button(action: { themeManager.next() }) {
                     Text(themeName(themeManager.current))
@@ -53,37 +65,17 @@ struct SidebarSessionView: View {
                         .overlay(AppTheme.divider)
                         .padding(.vertical, 6)
 
-                    sessionGroup(
-                        title: L10n.awaitingInput,
-                        icon: "clock",
-                        color: .green,
-                        groupKey: "awaiting",
-                        sessions: sessionManager.sessions.filter { $0.status == "waiting" }
-                    )
-
-                    sessionGroup(
-                        title: L10n.working,
-                        icon: "gear",
-                        color: .orange,
-                        groupKey: "working",
-                        sessions: sessionManager.sessions.filter { $0.status == "working" }
-                    )
-
-                    sessionGroup(
-                        title: L10n.completed,
-                        icon: "checkmark.circle",
-                        color: .blue,
-                        groupKey: "completed",
-                        sessions: sessionManager.sessions.filter { $0.status == "completed" }
-                    )
-
-                    sessionGroup(
-                        title: L10n.idle,
-                        icon: "moon",
-                        color: .gray,
-                        groupKey: "idle",
-                        sessions: sessionManager.sessions.filter { $0.status != "waiting" && $0.status != "working" && $0.status != "completed" }
-                    )
+                    let workspaces = sessionManager.workspaces
+                    if workspaces.isEmpty {
+                        Text(L10n.noWorkspaces)
+                            .font(.system(size: 11))
+                            .foregroundStyle(AppTheme.textMuted)
+                            .padding(.vertical, 8)
+                    } else {
+                        ForEach(workspaces) { workspace in
+                            workspaceSection(workspace: workspace)
+                        }
+                    }
                 }
                 .padding(.horizontal, 8)
             }
@@ -92,7 +84,8 @@ struct SidebarSessionView: View {
                 .overlay(AppTheme.divider)
 
             HStack {
-                Text(L10n.agentCount(sessionManager.sessions.count))
+                let ws = sessionManager.workspaces
+                Text("\(ws.count) \(L10n.workspaces.lowercased()) · \(L10n.agentCount(sessionManager.sessions.count))")
                     .font(.system(size: 11))
                     .foregroundStyle(AppTheme.textMuted)
                 Spacer()
@@ -109,6 +102,54 @@ struct SidebarSessionView: View {
         case .basic:      return isCN ? "基础" : "Basic"
         case .clearDark:  return isCN ? "暗色" : "Dark"
         case .clearLight: return isCN ? "亮色" : "Light"
+        }
+    }
+
+    // MARK: - Environment Status
+
+    private var envColor: Color {
+        if envChecker.isChecking { return .gray }
+        if envChecker.hasFail { return .red }
+        if envChecker.allOk { return .green }
+        return .gray
+    }
+
+    private var envPopoverContent: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L10n.envCheck)
+                .font(.system(size: 13, weight: .semibold))
+                .padding(.bottom, 4)
+
+            envRow(label: L10n.nodeJs, status: envChecker.nodeStatus)
+            envRow(label: L10n.claudeCli, status: envChecker.cliStatus)
+            envRow(label: L10n.loginStatus, status: envChecker.loginStatus)
+
+            Divider()
+
+            Button(action: { envChecker.check() }) {
+                Text(L10n.checking)
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color.accentColor)
+            }
+            .buttonStyle(.plain)
+            .disabled(envChecker.isChecking)
+        }
+        .padding(12)
+        .frame(width: 180)
+    }
+
+    private func envRow(label: String, status: CheckStatus) -> some View {
+        HStack {
+            Circle()
+                .fill(status == .ok ? .green : status == .fail ? .red : .gray)
+                .frame(width: 6, height: 6)
+            Text(label)
+                .font(.system(size: 12))
+                .foregroundStyle(AppTheme.textPrimary)
+            Spacer()
+            Text(status == .ok ? L10n.envOk : status == .fail ? L10n.envFail : L10n.checking)
+                .font(.system(size: 11))
+                .foregroundStyle(status == .ok ? .green : status == .fail ? .red : AppTheme.textMuted)
         }
     }
 
@@ -168,6 +209,101 @@ struct SidebarSessionView: View {
     // MARK: - Session Group
 
     @State private var expandedGroups: Set<String> = ["awaiting", "working", "completed", "idle"]
+    @State private var collapsedWorkspaces: Set<String> = []
+
+    // MARK: - Workspace Section
+
+    @ViewBuilder
+    private func workspaceSection(workspace: Workspace) -> some View {
+        let isExpanded = !collapsedWorkspaces.contains(workspace.path)
+        let totalSessions = workspace.sessions.count
+
+        VStack(spacing: 0) {
+            // Workspace header
+            Button(action: {
+                sessionManager.activeWorkspacePath = workspace.path
+                if isExpanded {
+                    collapsedWorkspaces.insert(workspace.path)
+                } else {
+                    collapsedWorkspaces.remove(workspace.path)
+                }
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Color.accentColor.opacity(0.7))
+                    Text(workspace.name)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(AppTheme.textPrimary)
+                        .lineLimit(1)
+                    Spacer()
+                    Text("\(totalSessions)")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(AppTheme.bgSurface)
+                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.sm))
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(AppTheme.textMuted)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
+                .padding(.vertical, 5)
+                .padding(.horizontal, 4)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                // Full path hint
+                HStack(spacing: 4) {
+                    Text(workspace.path)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(AppTheme.textMuted)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer()
+                }
+                .padding(.horizontal, 22)
+                .padding(.bottom, 4)
+
+                // Status groups within this workspace
+                let ws = workspace.sessions
+                sessionGroup(
+                    title: L10n.awaitingInput,
+                    icon: "clock",
+                    color: .green,
+                    groupKey: "\(workspace.path)/awaiting",
+                    sessions: ws.filter { $0.status == "waiting" }
+                )
+                sessionGroup(
+                    title: L10n.working,
+                    icon: "gear",
+                    color: .orange,
+                    groupKey: "\(workspace.path)/working",
+                    sessions: ws.filter { $0.status == "working" }
+                )
+                sessionGroup(
+                    title: L10n.completed,
+                    icon: "checkmark.circle",
+                    color: .blue,
+                    groupKey: "\(workspace.path)/completed",
+                    sessions: ws.filter { $0.status == "completed" }
+                )
+                sessionGroup(
+                    title: L10n.idle,
+                    icon: "moon",
+                    color: .gray,
+                    groupKey: "\(workspace.path)/idle",
+                    sessions: ws.filter { $0.status != "waiting" && $0.status != "working" && $0.status != "completed" }
+                )
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    // MARK: - Session Group
 
     @ViewBuilder
     private func sessionGroup(title: String, icon: String, color: Color, groupKey: String, sessions: [Session]) -> some View {
@@ -191,7 +327,7 @@ struct SidebarSessionView: View {
                     Spacer()
                     Text("\(sessions.count)")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(AppTheme.textSecondary)
+                        .foregroundStyle(color)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(AppTheme.bgSurface)

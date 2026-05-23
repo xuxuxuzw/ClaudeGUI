@@ -22,7 +22,7 @@ class Localization: ObservableObject {
 enum L10n {
     // Sidebar
     static var agents: String {
-        Localization.shared.current == .chinese ? "代理" : "Agents"
+        Localization.shared.current == .chinese ? "智能体" : "Agents"
     }
     static var allSessions: String {
         Localization.shared.current == .chinese ? "所有会话" : "All Sessions"
@@ -69,8 +69,37 @@ enum L10n {
     static var noSessions: String {
         Localization.shared.current == .chinese ? "暂无会话" : "No sessions"
     }
+    static var workspaces: String {
+        Localization.shared.current == .chinese ? "工作区" : "Workspaces"
+    }
+    static var noWorkspaces: String {
+        Localization.shared.current == .chinese ? "暂无工作区" : "No workspaces"
+    }
+
+    // Environment Check
+    static var envCheck: String {
+        Localization.shared.current == .chinese ? "环境检测" : "Environment"
+    }
+    static var nodeJs: String {
+        "Node.js"
+    }
+    static var claudeCli: String {
+        "Claude CLI"
+    }
+    static var loginStatus: String {
+        Localization.shared.current == .chinese ? "登录状态" : "Login"
+    }
+    static var envOk: String {
+        Localization.shared.current == .chinese ? "正常" : "OK"
+    }
+    static var envFail: String {
+        Localization.shared.current == .chinese ? "未检测到" : "Not found"
+    }
+    static var checking: String {
+        Localization.shared.current == .chinese ? "检测中…" : "Checking…"
+    }
     static func agentCount(_ count: Int) -> String {
-        Localization.shared.current == .chinese ? "\(count) 个代理" : "\(count) agent\(count == 1 ? "" : "s")"
+        Localization.shared.current == .chinese ? "\(count) 个智能体" : "\(count) agent\(count == 1 ? "" : "s")"
     }
 
     // Context Menu

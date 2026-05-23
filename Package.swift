@@ -11,7 +11,10 @@ let package = Package(
         .executableTarget(
             name: "ClaudeGUI",
             dependencies: ["SwiftTerm"],
-            path: "Sources/ClaudeGUI"
+            path: "Sources/ClaudeGUI",
+            resources: [
+                .process("AppIcon.icns")
+            ]
         )
     ]
 )

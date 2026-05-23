@@ -1,14 +1,35 @@
 import Foundation
 import Combine
 
+struct Workspace: Identifiable {
+    let path: String       // workingDirectory full path, serves as unique ID
+    var name: String       // lastPathComponent for display
+    var sessions: [Session]
+
+    var id: String { path }
+}
+
 final class SessionManager: ObservableObject {
     @Published var sessions: [Session] = []
     @Published var activeSessionId: UUID?
+    @Published var activeWorkspacePath: String?
 
     private let sessionsKey = "claudeGUI_sessions"
 
     init() {
         loadSessions()
+    }
+
+    // MARK: - Workspace Grouping
+
+    var workspaces: [Workspace] {
+        Dictionary(grouping: sessions, by: \.workingDirectory)
+            .map { key, value in
+                let url = URL(fileURLWithPath: key)
+                let name = url.lastPathComponent.isEmpty ? key : url.lastPathComponent
+                return Workspace(path: key, name: name, sessions: value)
+            }
+            .sorted { $0.name < $1.name }
     }
 
     // MARK: - Session CRUD
