@@ -255,9 +255,76 @@ activeTerminal     →  当前显示的终端引用
 
 支持中文（默认）和英文，所有 UI 文本通过 L10n 枚举管理，切换语言即时刷新。
 
-## 11. 主题系统
+## 12. VS Code 工作区挂载
 
-### 11.1 架构
+### 12.1 数据结构
+
+```swift
+// SessionManager 中的工作区配置
+struct VSCodeWorkspaceConfig: Codable {
+    let filePath: String        // .code-workspace 文件路径
+    let primaryDir: String      // folders[0] 解析后的绝对路径
+    let relatedDirs: [String]   // folders[1...] 解析后的绝对路径
+    var needsRestart: Bool      // 配置变更后需新建会话
+}
+
+// Workspace 模型扩展字段
+struct Workspace {
+    var vscodeWorkspacePath: String?  // 关联的 .code-workspace 路径
+    var relatedDirs: [String]          // 关联目录列表
+    var needsRestart: Bool             // 是否需要重启会话
+}
+
+enum MountResult {
+    case success
+    case noMatchingWorkspace(String)  // 无匹配工作目录
+    case error(String)                // 解析错误
+}
+```
+
+### 12.2 挂载流程
+
+```
+用户点击挂载按钮 → NSOpenPanel 选择 .code-workspace 文件
+    → 解析 JSON folders 数组
+    → 第一个 folder 作为 primaryDir
+    → 检查是否存在匹配的 workspace（sessions 中有该 workingDirectory）
+    → 保存 VSCodeWorkspaceConfig 到 UserDefaults
+    → 更新 UI
+```
+
+### 12.3 取消挂载流程
+
+```
+用户点击取消挂载按钮 → 从 workspaceConfigs 移除对应 key
+    → 保存到 UserDefaults → UI 刷新
+```
+
+### 12.4 --add-dir 参数
+
+```swift
+func addDirArguments(for workingDirectory: String) -> [String] {
+    guard let config = workspaceConfigs[workingDirectory],
+          !config.relatedDirs.isEmpty else { return [] }
+    return config.relatedDirs.flatMap { ["--add-dir", $0] }
+}
+```
+
+新会话启动时自动拼接 `--add-dir` 参数：
+```bash
+claude --bg "任务描述" --add-dir /path/to/dir2 --add-dir /path/to/dir3
+```
+
+### 12.5 持久化
+
+- 存储 key: `claudeGUI_workspaceConfigs`
+- 格式: `[String: VSCodeWorkspaceConfig]` 的 JSON 编码
+- 启动时通过 `loadWorkspaceConfigs()` 加载
+- 每次挂载/取消挂载/清除重启标记时调用 `saveWorkspaceConfigs()`
+
+## 13. 主题系统
+
+### 13.1 架构
 
 ```
 ColorScheme 枚举 (.basic / .clearDark / .clearLight)
@@ -273,7 +340,7 @@ SwiftUI 视图自动刷新
 - `AppTheme` 的所有颜色属性是计算属性，读取 `ThemeManager.shared.current` 返回对应值
 - 主题选择通过 UserDefaults（key: `"claudeGUI_colorScheme"`）持久化
 
-### 11.2 三种配色方案
+### 13.2 三种配色方案
 
 | 方案 | 按钮文字 | 背景风格 | 终端 |
 |------|---------|---------|------|
@@ -283,11 +350,11 @@ SwiftUI 视图自动刷新
 
 Clear Dark 和 Clear Light 的配色取自 macOS Terminal.app 的同名方案。
 
-### 11.3 终端颜色同步
+### 13.3 终端颜色同步
 
 终端颜色通过 `AppTheme.termBg` / `AppTheme.termFg` / `AppTheme.termContainerBg` 统一管理，在 `makeTerminal()` 和 `TerminalViewRepresentable` 中使用，替代了之前的硬编码值。
 
-### 11.4 新增主题步骤
+### 13.4 新增主题步骤
 
 1. 在 `ColorScheme` 枚举中添加新 case
 2. 在 `AppTheme` 每个计算属性的 switch 中添加对应色值

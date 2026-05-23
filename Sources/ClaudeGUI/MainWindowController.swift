@@ -24,6 +24,8 @@ class SidebarCallback: ObservableObject {
     var onStop: ((UUID) -> Void)?
     var onOverview: (() -> Void)?
     var onNewSession: (() -> Void)?
+    var onMountWorkspace: ((String) -> Void)?  // workspace path
+    var onUnmountWorkspace: ((String) -> Void)?  // workspace path
 }
 
 class MainWindowController: NSWindowController, NSSplitViewDelegate {
@@ -119,6 +121,12 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
         }
         sidebarCallback.onNewSession = { [weak self] in
             self?.launchNewSession()
+        }
+        sidebarCallback.onMountWorkspace = { [weak self] workspacePath in
+            self?.mountVSCodeWorkspace(for: workspacePath)
+        }
+        sidebarCallback.onUnmountWorkspace = { [weak self] workspacePath in
+            self?.sessionManager.unmountVSCodeWorkspace(workspacePath: workspacePath)
         }
     }
 
@@ -406,12 +414,14 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
 
             let directory = state.directoryURL.path
             let claudePath = getClaudePath()
+            let addDirArgs = sessionManager.addDirArguments(for: directory)
+            let addDirString = addDirArgs.joined(separator: " ")
             let cmd: String
             if task.isEmpty {
-                cmd = "\(claudePath) --bg"
+                cmd = "\(claudePath) --bg\(addDirString.isEmpty ? "" : " \(addDirString)")"
             } else {
                 let escaped = task.replacingOccurrences(of: "\"", with: "\\\"")
-                cmd = "\(claudePath) --bg \"\(escaped)\""
+                cmd = "\(claudePath) --bg \"\(escaped)\"\(addDirString.isEmpty ? "" : " \(addDirString)")"
             }
 
             // Run --bg as a process to capture session ID
@@ -464,6 +474,7 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
 
                 DispatchQueue.main.async {
                     self.syncSessionManagerFromAgents()
+                    self.sessionManager.clearNeedsRestart(workspacePath: directory)
 
                     if let agent = self.agentSessions.first(where: {
                         $0.kind == "background" && $0.sessionId.hasPrefix(parsedShortId)
@@ -636,6 +647,42 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
         sessionManager.sessions = newSessions
         sessionManager.activeSessionId = activeSessionIndex.flatMap { idx in
             idx < backgroundAgents.count ? UUID(uuidString: backgroundAgents[idx].sessionId) : nil
+        }
+    }
+
+    // MARK: - VS Code Workspace Mount
+
+    private func mountVSCodeWorkspace(for workspacePath: String) {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.init(filenameExtension: "code-workspace") ?? .data]
+        panel.allowsMultipleSelection = false
+        if !workspacePath.isEmpty {
+            panel.directoryURL = URL(fileURLWithPath: workspacePath)
+        }
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        let result = sessionManager.mountVSCodeWorkspace(url.path)
+        switch result {
+        case .success:
+            break
+        case .noMatchingWorkspace(let dirName):
+            let msg = Localization.shared.current == .chinese
+                ? "当前没有关于「\(dirName)」的工作目录，请先创建工作目录后再挂载"
+                : "No workspace found for「\(dirName)». Create a workspace first, then mount."
+            let alert = NSAlert()
+            alert.messageText = msg
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        case .error(let message):
+            let alert = NSAlert()
+            alert.messageText = message
+            alert.alertStyle = .critical
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
         }
     }
 

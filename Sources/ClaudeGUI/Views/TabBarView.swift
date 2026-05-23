@@ -16,6 +16,16 @@ struct SidebarSessionView: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer()
+                // Mount VS Code workspace
+                Button(action: {
+                    callback.onMountWorkspace?("")
+                }) {
+                    Image(systemName: "link.badge.plus")
+                        .font(.system(size: 12))
+                        .foregroundStyle(AppTheme.textMuted)
+                }
+                .buttonStyle(.plain)
+                .help(localization.current == .chinese ? "挂载 VS Code 工作区配置" : "Mount VS Code workspace config")
                 // Environment status
                 Button(action: { showEnvPopover.toggle() }) {
                     Circle()
@@ -229,7 +239,7 @@ struct SidebarSessionView: View {
                 }
             }) {
                 HStack(spacing: 6) {
-                    Image(systemName: "folder.fill")
+                    Image(systemName: workspace.vscodeWorkspacePath != nil ? "folder.fill.badge.gearshape" : "folder.fill")
                         .font(.system(size: 11))
                         .foregroundStyle(Color.accentColor.opacity(0.7))
                     Text(workspace.name)
@@ -267,6 +277,65 @@ struct SidebarSessionView: View {
                 }
                 .padding(.horizontal, 22)
                 .padding(.bottom, 4)
+
+                // Needs restart indicator
+                if workspace.needsRestart {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.orange)
+                        Text(localization.current == .chinese ? "工作区配置已变更，请新建会话" : "Config changed, create a new session")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.orange)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 22)
+                    .padding(.bottom, 4)
+                }
+
+                // Unmount workspace button
+                if workspace.vscodeWorkspacePath != nil {
+                    HStack {
+                        Button(action: {
+                            callback.onUnmountWorkspace?(workspace.path)
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 10))
+                                Text(localization.current == .chinese ? "取消挂载工作区" : "Unmount workspace")
+                                    .font(.system(size: 10))
+                            }
+                            .foregroundStyle(.orange)
+                        }
+                        .buttonStyle(.plain)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 22)
+                    .padding(.bottom, 4)
+                }
+
+                // Related dirs display
+                if !workspace.relatedDirs.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(localization.current == .chinese ? "关联目录:" : "Related dirs:")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(AppTheme.textMuted)
+                        ForEach(workspace.relatedDirs, id: \.self) { dir in
+                            HStack(spacing: 4) {
+                                Image(systemName: "folder")
+                                    .font(.system(size: 8))
+                                    .foregroundStyle(AppTheme.textMuted)
+                                Text(URL(fileURLWithPath: dir).lastPathComponent)
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundStyle(AppTheme.textMuted)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 22)
+                    .padding(.bottom, 4)
+                }
 
                 // Status groups within this workspace
                 let ws = workspace.sessions
