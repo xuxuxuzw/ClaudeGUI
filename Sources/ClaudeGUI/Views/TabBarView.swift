@@ -13,7 +13,7 @@ struct SidebarSessionView: View {
             // Header
             HStack {
                 Text(L10n.agents)
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer()
                 // Mount VS Code workspace
@@ -21,11 +21,11 @@ struct SidebarSessionView: View {
                     callback.onMountWorkspace?("")
                 }) {
                     Image(systemName: "link.badge.plus")
-                        .font(.system(size: 12))
+                        .font(.system(size: 13))
                         .foregroundStyle(AppTheme.textMuted)
                 }
                 .buttonStyle(.plain)
-                .help(localization.current == .chinese ? "挂载 VS Code 工作区配置" : "Mount VS Code workspace config")
+                .help(localization.current == .chinese ? "挂载 VS Code 工作区配置，关联 .vscode 目录到当前项目" : "Mount VS Code workspace — link a .vscode folder to the current project")
                 // Environment status
                 Button(action: { showEnvPopover.toggle() }) {
                     Circle()
@@ -33,13 +33,14 @@ struct SidebarSessionView: View {
                         .frame(width: 8, height: 8)
                 }
                 .buttonStyle(.plain)
+                .help(localization.current == .chinese ? "环境检测状态：绿色 = 正常，红色 = 异常" : "Environment status: green = OK, red = error")
                 .popover(isPresented: $showEnvPopover) {
                     envPopoverContent
                 }
                 // Theme toggle
                 Button(action: { themeManager.next() }) {
                     Text(themeName(themeManager.current))
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(Color.accentColor)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
@@ -50,7 +51,7 @@ struct SidebarSessionView: View {
                 // Language toggle
                 Button(action: { localization.toggle() }) {
                     Text(localization.current == .chinese ? "EN" : "中")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(Color.accentColor)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
@@ -58,6 +59,7 @@ struct SidebarSessionView: View {
                         .clipShape(RoundedRectangle(cornerRadius: AppRadius.sm))
                 }
                 .buttonStyle(.plain)
+                .help(localization.current == .chinese ? "切换界面语言" : "Toggle interface language")
             }
             .padding(.horizontal, AppSpacing.xl)
             .padding(.vertical, 10)
@@ -78,7 +80,7 @@ struct SidebarSessionView: View {
                     let workspaces = sessionManager.workspaces
                     if workspaces.isEmpty {
                         Text(L10n.noWorkspaces)
-                            .font(.system(size: 11))
+                            .font(.system(size: 12))
                             .foregroundStyle(AppTheme.textMuted)
                             .padding(.vertical, 8)
                     } else {
@@ -96,7 +98,7 @@ struct SidebarSessionView: View {
             HStack {
                 let ws = sessionManager.workspaces
                 Text("\(ws.count) \(L10n.workspaces.lowercased()) · \(L10n.agentCount(sessionManager.sessions.count))")
-                    .font(.system(size: 11))
+                    .font(.system(size: 12))
                     .foregroundStyle(AppTheme.textMuted)
                 Spacer()
             }
@@ -172,11 +174,11 @@ struct SidebarSessionView: View {
         }) {
             HStack(spacing: 8) {
                 Image(systemName: "square.grid.2x2")
-                    .font(.system(size: 12))
+                    .font(.system(size: 14))
                     .frame(width: 20)
                     .foregroundStyle(Color.accentColor)
                 Text(L10n.allSessions)
-                    .font(.system(size: 12, weight: sessionManager.activeSessionId == nil ? .semibold : .regular))
+                    .font(.system(size: 14, weight: sessionManager.activeSessionId == nil ? .semibold : .regular))
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer()
                 if sessionManager.activeSessionId == nil {
@@ -201,11 +203,11 @@ struct SidebarSessionView: View {
         }) {
             HStack(spacing: 8) {
                 Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 13))
+                    .font(.system(size: 14))
                     .frame(width: 20)
                     .foregroundStyle(Color.accentColor.opacity(0.8))
                 Text(L10n.newSession)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(AppTheme.textSecondary)
                 Spacer()
             }
@@ -240,22 +242,22 @@ struct SidebarSessionView: View {
             }) {
                 HStack(spacing: 6) {
                     Image(systemName: workspace.vscodeWorkspacePath != nil ? "folder.fill.badge.gearshape" : "folder.fill")
-                        .font(.system(size: 11))
+                        .font(.system(size: 13))
                         .foregroundStyle(Color.accentColor.opacity(0.7))
                     Text(workspace.name)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(AppTheme.textPrimary)
                         .lineLimit(1)
                     Spacer()
                     Text("\(totalSessions)")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(AppTheme.textSecondary)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1)
                         .background(AppTheme.bgSurface)
                         .clipShape(RoundedRectangle(cornerRadius: AppRadius.sm))
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .medium))
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(AppTheme.textMuted)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
@@ -269,7 +271,7 @@ struct SidebarSessionView: View {
                 // Full path hint
                 HStack(spacing: 4) {
                     Text(workspace.path)
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(AppTheme.textMuted)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -282,10 +284,10 @@ struct SidebarSessionView: View {
                 if workspace.needsRestart {
                     HStack(spacing: 4) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 9))
+                            .font(.system(size: 10))
                             .foregroundStyle(.orange)
                         Text(localization.current == .chinese ? "工作区配置已变更，请新建会话" : "Config changed, create a new session")
-                            .font(.system(size: 10))
+                            .font(.system(size: 11))
                             .foregroundStyle(.orange)
                         Spacer()
                     }
@@ -301,9 +303,9 @@ struct SidebarSessionView: View {
                         }) {
                             HStack(spacing: 4) {
                                 Image(systemName: "xmark.circle.fill")
-                                    .font(.system(size: 10))
+                                    .font(.system(size: 11))
                                 Text(localization.current == .chinese ? "取消挂载工作区" : "Unmount workspace")
-                                    .font(.system(size: 10))
+                                    .font(.system(size: 11))
                             }
                             .foregroundStyle(.orange)
                         }
@@ -318,15 +320,15 @@ struct SidebarSessionView: View {
                 if !workspace.relatedDirs.isEmpty {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(localization.current == .chinese ? "关联目录:" : "Related dirs:")
-                            .font(.system(size: 10, weight: .medium))
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(AppTheme.textMuted)
                         ForEach(workspace.relatedDirs, id: \.self) { dir in
                             HStack(spacing: 4) {
                                 Image(systemName: "folder")
-                                    .font(.system(size: 8))
+                                    .font(.system(size: 9))
                                     .foregroundStyle(AppTheme.textMuted)
                                 Text(URL(fileURLWithPath: dir).lastPathComponent)
-                                    .font(.system(size: 10, design: .monospaced))
+                                    .font(.system(size: 11, design: .monospaced))
                                     .foregroundStyle(AppTheme.textMuted)
                                     .lineLimit(1)
                                     .truncationMode(.middle)
@@ -391,18 +393,18 @@ struct SidebarSessionView: View {
                         .fill(color)
                         .frame(width: 8, height: 8)
                     Text(title)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(AppTheme.textPrimary)
                     Spacer()
                     Text("\(sessions.count)")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(color)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(AppTheme.bgSurface)
                         .clipShape(RoundedRectangle(cornerRadius: AppRadius.sm))
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .medium))
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(AppTheme.textMuted)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
@@ -415,7 +417,7 @@ struct SidebarSessionView: View {
             if isExpanded {
                 if sessions.isEmpty {
                     Text(L10n.noSessions)
-                        .font(.system(size: 11))
+                        .font(.system(size: 12))
                         .foregroundStyle(AppTheme.textMuted)
                         .padding(.leading, 20)
                         .padding(.vertical, 4)
@@ -445,11 +447,11 @@ struct SidebarSessionView: View {
                     .frame(width: 6, height: 6)
 
                 Text(session.shortId)
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
                     .foregroundStyle(AppTheme.textMuted)
 
                 Text(session.name)
-                    .font(.system(size: 12, weight: isActive ? .semibold : .regular))
+                    .font(.system(size: 14, weight: isActive ? .semibold : .regular))
                     .foregroundStyle(isActive ? AppTheme.textPrimary : AppTheme.textSecondary)
                     .lineLimit(1)
 

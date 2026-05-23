@@ -101,6 +101,10 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
         splitView.setPosition(220, ofDividerAt: 0)
         window.contentView = splitView
 
+        DispatchQueue.main.async { [weak self] in
+            self?.splitView.setPosition(220, ofDividerAt: 0)
+        }
+
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             return self?.handleKeyDown(event) ?? event
         }
