@@ -7,6 +7,7 @@ struct SidebarSessionView: View {
     @ObservedObject var themeManager = ThemeManager.shared
     @ObservedObject var envChecker = EnvironmentChecker.shared
     @State private var showEnvPopover = false
+    @State private var toastMessage: String? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -103,8 +104,38 @@ struct SidebarSessionView: View {
                 Spacer()
             }
             .padding(.horizontal, AppSpacing.xl)
-            .padding(.vertical, 6)
+            .padding(.vertical, 4)
+
+            HStack {
+                Text("v1.0.0")
+                    .font(.system(size: 10))
+                    .foregroundStyle(AppTheme.textMuted.opacity(0.6))
+                Spacer()
+                Button(action: {
+                    NSWorkspace.shared.open(URL(string: "https://github.com/xuxuxuzw/ClaudeGUI")!)
+                }) {
+                    Image(systemName: "arrow.up.forward.square")
+                        .font(.system(size: 11))
+                        .foregroundStyle(AppTheme.textMuted.opacity(0.5))
+                }
+                .buttonStyle(.plain)
+                .help("GitHub: xuxuxuzw/ClaudeGUI")
+            }
+            .padding(.horizontal, AppSpacing.xl)
+            .padding(.bottom, 4)
         }
+        .overlay(alignment: .center) {
+            if let msg = toastMessage {
+                Text(msg)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Capsule().fill(Color.black.opacity(0.75)))
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: toastMessage)
         .background(AppTheme.bgBase)
     }
 
@@ -279,6 +310,14 @@ struct SidebarSessionView: View {
                 }
                 .padding(.horizontal, 22)
                 .padding(.bottom, 4)
+                .contentShape(Rectangle())
+                .onTapGesture(count: 2) {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(workspace.path, forType: .string)
+                    toastMessage = localization.current == .chinese ? "已复制!" : "Copied!"
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { toastMessage = nil }
+                }
+                .help(localization.current == .chinese ? "双击复制路径" : "Double-click to copy path")
 
                 // Needs restart indicator
                 if workspace.needsRestart {
@@ -333,6 +372,14 @@ struct SidebarSessionView: View {
                                     .lineLimit(1)
                                     .truncationMode(.middle)
                             }
+                            .contentShape(Rectangle())
+                            .onTapGesture(count: 2) {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(dir, forType: .string)
+                                toastMessage = localization.current == .chinese ? "已复制!" : "Copied!"
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { toastMessage = nil }
+                            }
+                            .help(localization.current == .chinese ? "双击复制路径" : "Double-click to copy path")
                         }
                     }
                     .padding(.horizontal, 22)

@@ -12,8 +12,10 @@
 - **拖拽文件** — 从 Finder 拖拽文件到终端，自动格式化为 `@/path/to/file`
 - **自动同步** — 每 5 秒轮询 `claude agents --json` 刷新会话列表
 - **主题切换** — 三种配色方案：基础（暗黑）、暗色（通透深色）、亮色（明亮浅色）
+- **工作区挂载** — 支持挂载 VS Code 工作区配置，自动提取关联目录
 - **中英文** — 支持中文/英文切换，所有 UI 文本均支持双语
 - **快捷键** — `Cmd+R` 刷新会话列表，`Cmd+1~9` 快速切换会话
+- **环境检测** — 启动时自动检测 Node.js、Claude CLI、登录状态
 
 ## 安装
 
@@ -94,6 +96,7 @@ ClaudeGUI/
 │   ├── Views/
 │   │   ├── ContentView.swift   # 根布局（侧边栏 + 终端）
 │   │   ├── TabBarView.swift    # 侧边栏会话分组
+│   │   ├── AboutView.swift     # 自定义关于窗口
 │   │   ├── TerminalView.swift  # SwiftTerm SwiftUI 封装
 │   │   ├── WelcomeView.swift   # 空状态欢迎页
 │   │   └── DragDropTerminalView.swift  # 支持拖拽的终端
@@ -121,7 +124,9 @@ MainWindowController (NSWindowController)
 ## TODO
 
 - [x] **环境检测** — 启动时自动检测 Node.js、Claude Code CLI、登录状态，检测结果展示在 app 右上角
-- [ ] **工作区** — 引入工作区（Workspace）概念，按工作目录分组，每个工作区下独立管理四个状态分组（等待输入、工作中、已完成、空闲），每个状态组下再挂载具体会话
+- [x] **工作区** — 引入工作区（Workspace）概念，按工作目录分组，每个工作区下独立管理四个状态分组（等待输入、工作中、已完成、空闲），每个状态组下再挂载具体会话
+- [x] **VS Code 工作区挂载** — 支持挂载 `.code-workspace` 文件，自动提取关联目录
+- [x] **双击复制路径** — 双击侧边栏目录路径可复制到剪贴板，带吐司提示
 
 ## 许可证
 

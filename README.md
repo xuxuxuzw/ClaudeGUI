@@ -12,8 +12,10 @@ English | [中文](README_CN.md)
 - **Drag & drop** — Drop files from Finder into the terminal, auto-formatted as `@/path/to/file`
 - **Auto sync** — Polls `claude agents --json` every 5 seconds to refresh session list
 - **Theme switching** — Three color schemes: Basic (dark), Clear Dark (translucent dark), Clear Light (bright)
+- **Workspace mounting** — Mount VS Code workspace configs, auto-extract related directories
 - **Bilingual** — Chinese / English toggle, all UI text supports both languages
 - **Keyboard shortcuts** — `Cmd+R` refresh, `Cmd+1~9` switch sessions
+- **Environment detection** — Auto-check Node.js, Claude CLI, and auth status on launch
 
 ## Installation
 
@@ -94,6 +96,7 @@ ClaudeGUI/
 │   ├── Views/
 │   │   ├── ContentView.swift   # Root layout (sidebar + terminal)
 │   │   ├── TabBarView.swift    # Sidebar with session groups
+│   │   ├── AboutView.swift     # Custom About window
 │   │   ├── TerminalView.swift  # SwiftTerm SwiftUI wrapper
 │   │   ├── WelcomeView.swift   # Empty state view
 │   │   └── DragDropTerminalView.swift  # Terminal with file drag & drop
@@ -120,8 +123,10 @@ MainWindowController (NSWindowController)
 
 ## TODO
 
-- [ ] **Environment detection** — Auto-check Node.js, Claude Code CLI, and auth status on launch; display results in the top-right corner of the app
-- [ ] **Workspaces** — Introduce Workspace concept: group sessions by working directory, each workspace has its own four status groups (Awaiting Input, Working, Completed, Idle), with individual sessions nested under each group
+- [x] **Environment detection** — Auto-check Node.js, Claude Code CLI, and auth status on launch; display results in the top-right corner of the app
+- [x] **Workspaces** — Introduce Workspace concept: group sessions by working directory, each workspace has its own four status groups (Awaiting Input, Working, Completed, Idle), with individual sessions nested under each group
+- [x] **VS Code workspace mounting** — Mount `.code-workspace` files, auto-extract related directories
+- [x] **Double-click to copy paths** — Double-click sidebar directory paths to copy to clipboard with toast feedback
 
 ## License
 

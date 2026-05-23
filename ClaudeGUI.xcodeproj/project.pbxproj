@@ -20,6 +20,8 @@
 		E7B6C10A12345678 /* DragDropTerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7B6C02A12345678 /* DragDropTerminalView.swift */; };
 		E7B6C10B12345678 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7B6C02B12345678 /* Theme.swift */; };
 		E7B6C10C12345678 /* EnvironmentChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7B6C02C12345678 /* EnvironmentChecker.swift */; };
+		E7B6C10D12345678 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7B6C02D12345678 /* AboutView.swift */; };
+		E7B6C10E12345678 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = E7B6C02E12345678 /* AppIcon.icns */; };
 		E7B6C20112345678 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = E7B6C20012345678 /* SwiftTerm */; };
 /* End PBXBuildFile section */
 
@@ -37,6 +39,8 @@
 		E7B6C02A12345678 /* DragDropTerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DragDropTerminalView.swift; sourceTree = "<group>"; };
 		E7B6C02B12345678 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		E7B6C02C12345678 /* EnvironmentChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentChecker.swift; sourceTree = "<group>"; };
+		E7B6C02D12345678 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
+		E7B6C02E12345678 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
 		E7B6C09012345678 /* ClaudeGUI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ClaudeGUI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E7B6C09112345678 /* ClaudeGUI.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ClaudeGUI/ClaudeGUI.entitlements; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
@@ -51,6 +55,17 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXResourcesBuildPhase section */
+		E7B6C07E12345678 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E7B6C10E12345678 /* AppIcon.icns in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXGroup section */
 		E7B6C0D112345678 /* = mainGroup */ = {
@@ -69,6 +84,7 @@
 				E7B6C02112345678 /* MainWindowController.swift */,
 				E7B6C02912345678 /* Localization.swift */,
 				E7B6C02B12345678 /* Theme.swift */,
+				E7B6C02E12345678 /* AppIcon.icns */,
 				E7B6C0D312345678 /* Models */,
 				E7B6C0D412345678 /* Services */,
 				E7B6C0D512345678 /* Views */,
@@ -102,6 +118,7 @@
 				E7B6C02712345678 /* TerminalView.swift */,
 				E7B6C02812345678 /* WelcomeView.swift */,
 				E7B6C02A12345678 /* DragDropTerminalView.swift */,
+				E7B6C02D12345678 /* AboutView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -123,6 +140,8 @@
 			buildPhases = (
 				E7B6C07F12345678 /* Sources */,
 				E7B6C08112345678 /* Frameworks */,
+				E7B6C07E12345678 /* Resources */,
+				E7B6C07D12345678 /* Add Icon to Info.plist */,
 			);
 			buildRules = (
 			);
@@ -185,10 +204,28 @@
 				E7B6C10A12345678 /* DragDropTerminalView.swift in Sources */,
 				E7B6C10B12345678 /* Theme.swift in Sources */,
 				E7B6C10C12345678 /* EnvironmentChecker.swift in Sources */,
+				E7B6C10D12345678 /* AboutView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		E7B6C07D12345678 /* Add Icon to Info.plist */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Add Icon to Info.plist";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "PLIST=\"$BUILT_PRODUCTS_DIR/$INFOPLIST_PATH\"\n/usr/libexec/PlistBuddy -c \"Add :CFBundleIconFile string AppIcon\" \"$PLIST\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Set :CFBundleIconFile AppIcon\" \"$PLIST\"\n/usr/libexec/PlistBuddy -c \"Add :CFBundleIconName string AppIcon\" \"$PLIST\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Set :CFBundleIconName AppIcon\" \"$PLIST\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
 		E7B6C0D612345678 /* Debug */ = {
