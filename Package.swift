@@ -5,7 +5,7 @@ let package = Package(
     name: "ClaudeGUI",
     platforms: [.macOS(.v14)],
     dependencies: [
-        .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", from: "1.0.0")
+        .package(path: "./LocalSwiftTerm")
     ],
     targets: [
         .executableTarget(
