@@ -106,6 +106,30 @@ struct SidebarSessionView: View {
             .padding(.horizontal, AppSpacing.xl)
             .padding(.vertical, 4)
 
+            // Permission mode cycle button
+            Button(action: { callback.onCyclePermissionMode?() }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "shield.lefthalf.filled")
+                        .font(.system(size: 11))
+                        .foregroundStyle(AppTheme.textMuted)
+                    Text(L10n.permissionMode)
+                        .font(.system(size: 12))
+                        .foregroundStyle(AppTheme.textSecondary)
+                    Spacer()
+                    Image(systemName: "chevron.right.2")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Color.accentColor.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, AppSpacing.xl)
+            .padding(.vertical, 6)
+
+            Divider()
+                .overlay(AppTheme.divider)
+
             HStack {
                 Text("v1.0.0")
                     .font(.system(size: 10))

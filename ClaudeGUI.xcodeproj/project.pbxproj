@@ -21,6 +21,7 @@
 		E7B6C10B12345678 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7B6C02B12345678 /* Theme.swift */; };
 		E7B6C10C12345678 /* EnvironmentChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7B6C02C12345678 /* EnvironmentChecker.swift */; };
 		E7B6C10D12345678 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7B6C02D12345678 /* AboutView.swift */; };
+		E7B6C10F12345678 /* PermissionMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7B6C02F12345678 /* PermissionMode.swift */; };
 		E7B6C10E12345678 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = E7B6C02E12345678 /* AppIcon.icns */; };
 		E7B6C20112345678 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = E7B6C20012345678 /* SwiftTerm */; };
 /* End PBXBuildFile section */
@@ -30,6 +31,7 @@
 		E7B6C02112345678 /* MainWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowController.swift; sourceTree = "<group>"; };
 		E7B6C02212345678 /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
 		E7B6C02312345678 /* SessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionManager.swift; sourceTree = "<group>"; };
+		E7B6C02F12345678 /* PermissionMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionMode.swift; sourceTree = "<group>"; };
 		E7B6C02412345678 /* TerminalService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalService.swift; sourceTree = "<group>"; };
 		E7B6C02512345678 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		E7B6C02612345678 /* TabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarView.swift; sourceTree = "<group>"; };
@@ -97,6 +99,7 @@
 			children = (
 				E7B6C02212345678 /* Session.swift */,
 				E7B6C02312345678 /* SessionManager.swift */,
+				E7B6C02F12345678 /* PermissionMode.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -205,6 +208,7 @@
 				E7B6C10B12345678 /* Theme.swift in Sources */,
 				E7B6C10C12345678 /* EnvironmentChecker.swift in Sources */,
 				E7B6C10D12345678 /* AboutView.swift in Sources */,
+				E7B6C10F12345678 /* PermissionMode.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

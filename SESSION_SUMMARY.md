@@ -136,3 +136,99 @@ NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
 | `DragDropTerminalView.swift` | 无修改（尝试了 override 但最终回退） |
 | `TerminalView.swift` | 添加了 `TerminalHostingView` 包装器（未被运行时使用，但保留以备后续 SwiftUI 路径） |
 | `ContentView.swift` | 添加了 `GeometryReader` 确保帧传递（同上前未被使用） |
+
+---
+
+# 会话总结 (2026-05-25) — 权限模式切换功能
+
+## 需求背景
+
+用户阅读了 [Claude Code 权限模式文章](https://oscar.blog.csdn.net/article/details/159617638)，希望在 ClaudeGUI 中加入权限模式切换功能。Claude Code CLI 支持 6 种权限模式（`default`、`acceptEdits`、`plan`、`auto`、`dontAsk`、`bypassPermissions`），在终端中通过 `Shift+Tab` 循环切换。
+
+## 最终方案
+
+**侧边栏点击按钮 + 快捷键 `Cmd+Shift+T`，每次发送一次 `\x1b[Z`（Shift+Tab 终端转义序列）到终端，让 Claude CLI 自己循环权限模式。**
+
+不做计算、不追踪状态、不假装知道当前模式。
+
+## 方案演变过程
+
+### 第一阶段：新建会话时指定模式
+
+最初方案是在新建会话对话框中添加权限模式 Picker，创建会话时传入 `--permission-mode` 参数。这只能设置初始模式，用户反馈希望运行时也能切换。
+
+### 第二阶段：运行时下拉选择 + 计算 Shift+Tab 次数
+
+在侧边栏底部添加 Picker，选择目标模式后计算从当前模式到目标模式需要几次 `Shift+Tab`，发送对应次数。
+
+**问题**：`@Published var currentPermissionMode` 假装知道 Claude CLI 的当前模式，但实际上：
+- 用户可能在终端里直接按了 `Shift+Tab`（绕过选择器）
+- 会话重启后模式重置
+- 状态栏文字可能不显示
+
+状态不同步导致发送的 Shift+Tab 次数错误。
+
+### 第三阶段（最终）：纯动作式，每次发一次 Shift+Tab
+
+- 移除 `currentPermissionMode` 状态追踪
+- Picker → Menu → 简单 Button（点击整行触发）
+- `setPermissionMode(target:)` → `cyclePermissionMode()`（无参数，固定发 1 次）
+- `shiftTabCount` 等所有计算逻辑全部删除
+- 新增 `Cmd+Shift+T` 全局快捷键
+
+## 架构分析：为什么不能用 MCP 通信
+
+用户提出用 MCP（Model Context Protocol）来切换权限。
+
+**结论**：不可行，MCP 的方向是反的。
+
+| | MCP 设计方向 | 我们需要的方向 |
+|---|---|---|
+| 通信模式 | Claude → 外部工具 | 外部 UI → Claude |
+| 协议用途 | Claude 调用文件系统/Git/浏览器等 | 外部控制 Claude 的权限模式 |
+
+VS Code 插件能做到是因为它**不是在终端里跑 Claude**，而是通过自己的 MCP server (`ide`) 与 headless Claude 子进程通信，权限模式通过扩展设置直接控制。ClaudeGUI 运行的是原始终端会话（SwiftTerm PTY），唯一的输入通道就是终端 stdin。
+
+## 涉及文件
+
+| 文件 | 新增/修改 | 内容 |
+|------|----------|------|
+| `Models/PermissionMode.swift` | **新增** | 权限模式枚举，6 种模式 + `cliFlag`、`displayName`、`description`、持久化默认模式 |
+| `Localization.swift` | 修改 | 新增 `permissionMode`（切换权限模式 / Cycle Permission Mode）、`permissionModeDesc` |
+| `MainWindowController.swift` | 修改 | `SidebarCallback` 新增 `onCyclePermissionMode`；`cyclePermissionMode()` 方法发送 `\x1b[Z`；`handleKeyDown` 新增 `Cmd+Shift+T`；新建会话支持 `--permission-mode` 参数 |
+| `Views/TabBarView.swift` | 修改 | 侧边栏底部新增 "切换权限模式" 按钮（整行可点击） |
+| `project.pbxproj` | 修改 | 注册 PermissionMode.swift 到 Xcode 项目 |
+
+## 构建与部署经验
+
+### 问题：命令行编译的 app 和 Xcode 编译的行为不一致
+
+用户反馈 `xcodebuild` 编译出来的 app 没有切换权限模式功能，但 Xcode GUI 编译的有。
+
+### 排查
+
+1. `strings | grep "切换权限模式"` — 二进制中无此字符串（false negative，Swift 字符串可能不以 ASCII 存储）
+2. `strings | grep "cyclePermission"` — 有结果，代码确实在
+3. `nm | grep "cyclePermission"` — 符号表中有 `cyclePermissionMode`，确认代码编译进了
+
+### 根因：`cp -R` 没有正确覆盖旧 app bundle
+
+macOS 的 app bundle 是目录结构，`cp -R` 对已存在的 bundle 行为不可靠，可能只替换了部分文件而未完整覆盖。
+
+### 修复
+
+```bash
+# 正确方式：先删除再复制，使用 ditto（macOS 推荐）
+rm -rf /path/to/ClaudeGUI.app
+ditto /DerivedData/.../Release/ClaudeGUI.app /path/to/ClaudeGUI.app
+```
+
+`ditto` 是 macOS 专门处理 bundle 复制的工具，能正确处理签名、扩展属性、符号链接。
+
+### 教训
+
+| 场景 | 错误做法 | 正确做法 |
+|------|---------|---------|
+| 覆盖 app bundle | `cp -R src.app dst.app` | `rm -rf dst.app && ditto src.app dst.app` |
+| 验证功能是否编译进 | `strings \| grep`（对 Swift 字符串不可靠） | `nm \| grep` 查符号表 |
+| 清缓存重编译 | 直接 rebuild | `rm -rf DerivedData` → rebuild |

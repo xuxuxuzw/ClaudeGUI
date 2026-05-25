@@ -26,6 +26,7 @@ class SidebarCallback: ObservableObject {
     var onNewSession: (() -> Void)?
     var onMountWorkspace: ((String) -> Void)?  // workspace path
     var onUnmountWorkspace: ((String) -> Void)?  // workspace path
+    var onCyclePermissionMode: (() -> Void)?
 }
 
 class MainWindowController: NSWindowController, NSSplitViewDelegate {
@@ -136,6 +137,9 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
         }
         sidebarCallback.onUnmountWorkspace = { [weak self] workspacePath in
             self?.sessionManager.unmountVSCodeWorkspace(workspacePath: workspacePath)
+        }
+        sidebarCallback.onCyclePermissionMode = { [weak self] in
+            self?.cyclePermissionMode()
         }
     }
 
@@ -277,6 +281,7 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
     private struct NewSessionDialogContent: View {
         @Binding var taskText: String
         @Binding var directoryURL: URL
+        @Binding var permissionMode: PermissionMode
         @ObservedObject var localization = Localization.shared
         let onSubmit: () -> Void
         let onCancel: () -> Void
@@ -361,6 +366,31 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
                     }
                     .buttonStyle(.plain)
                 }
+                .padding(.bottom, 16)
+
+                // Permission mode picker
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(L10n.permissionMode)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(textSecondary)
+                        Spacer()
+                        Picker("", selection: $permissionMode) {
+                            ForEach(PermissionMode.allCases, id: \.self) { mode in
+                                Text(mode.displayName).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .frame(width: 220)
+                        .onChange(of: permissionMode) { newMode in
+                            newMode.persistAsDefault()
+                        }
+                    }
+                    Text(L10n.permissionModeDesc)
+                        .font(.system(size: 10))
+                        .foregroundStyle(textSecondary.opacity(0.7))
+                }
                 .padding(.bottom, 24)
 
                 // Buttons
@@ -411,6 +441,7 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
     private class NewSessionState: ObservableObject {
         @Published var taskText = ""
         @Published var directoryURL = FileManager.default.homeDirectoryForCurrentUser
+        @Published var permissionMode: PermissionMode = PermissionMode.persistedDefault()
     }
 
     private func launchNewSession() {
@@ -428,12 +459,13 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
             let claudePath = getClaudePath()
             let addDirArgs = sessionManager.addDirArguments(for: directory)
             let addDirString = addDirArgs.joined(separator: " ")
+            let permissionFlag = state.permissionMode == .default ? "" : " \(state.permissionMode.cliFlag)"
             let cmd: String
             if task.isEmpty {
-                cmd = "\(claudePath) --bg\(addDirString.isEmpty ? "" : " \(addDirString)")"
+                cmd = "\(claudePath) --bg\(permissionFlag)\(addDirString.isEmpty ? "" : " \(addDirString)")"
             } else {
                 let escaped = task.replacingOccurrences(of: "\"", with: "\\\"")
-                cmd = "\(claudePath) --bg \"\(escaped)\"\(addDirString.isEmpty ? "" : " \(addDirString)")"
+                cmd = "\(claudePath) --bg \"\(escaped)\"\(permissionFlag)\(addDirString.isEmpty ? "" : " \(addDirString)")"
             }
 
             // Run --bg as a process to capture session ID
@@ -527,6 +559,7 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
         let content = NewSessionDialogContent(
             taskText: Binding(get: { state.taskText }, set: { state.taskText = $0 }),
             directoryURL: Binding(get: { state.directoryURL }, set: { state.directoryURL = $0 }),
+            permissionMode: Binding(get: { state.permissionMode }, set: { state.permissionMode = $0 }),
             onSubmit: onSubmit,
             onCancel: onCancel,
             onBrowse: onBrowse
@@ -750,11 +783,23 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
         }
     }
 
+    private func cyclePermissionMode() {
+        guard let terminal = activeTerminal, !terminal.isHidden else { return }
+        let shiftTab: [UInt8] = [0x1b, 0x5b, 0x5a]
+        terminal.process.send(data: ArraySlice(shiftTab))
+    }
+
     // MARK: - Keyboard
 
     private func handleKeyDown(_ event: NSEvent) -> NSEvent? {
         guard let window = window, window.isKeyWindow else { return event }
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+
+        if flags.contains(.command) && flags.contains(.shift) && event.charactersIgnoringModifiers == "t" {
+            cyclePermissionMode()
+            return nil
+        }
+
         guard flags.contains(.command) else { return event }
 
         if event.charactersIgnoringModifiers == "r" {

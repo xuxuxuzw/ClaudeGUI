@@ -134,4 +134,11 @@ enum L10n {
     static var switchToChinese: String {
         "中文"
     }
+
+    static var permissionMode: String {
+        Localization.shared.current == .chinese ? "切换权限模式" : "Cycle Permission Mode"
+    }
+    static var permissionModeDesc: String {
+        Localization.shared.current == .chinese ? "控制 Claude 执行操作前是否需要确认" : "Control whether Claude needs confirmation before actions"
+    }
 }
