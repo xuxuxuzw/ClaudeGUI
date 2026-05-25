@@ -96,6 +96,7 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
         // Terminal container
         terminalContainer.wantsLayer = true
         terminalContainer.layer?.backgroundColor = AppTheme.termContainerBg.cgColor
+        terminalContainer.autoresizesSubviews = true
         splitView.addSubview(terminalContainer)
 
         splitView.setPosition(220, ofDividerAt: 0)
@@ -107,6 +108,10 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
 
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             return self?.handleKeyDown(event) ?? event
+        }
+
+        NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+            return self?.handleScrollWheel(event) ?? event
         }
     }
 
@@ -137,7 +142,10 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
     // MARK: - Terminal Management
 
     private func makeTerminal() -> DragDropTerminalView {
-        let tv = DragDropTerminalView(frame: terminalContainer.bounds)
+        let frame = terminalContainer.bounds.isEmpty
+            ? NSRect(x: 0, y: 0, width: 800, height: 600)
+            : terminalContainer.bounds
+        let tv = DragDropTerminalView(frame: frame)
         tv.autoresizingMask = [.width, .height]
         tv.configureNativeColors()
         tv.terminal.backgroundColor = AppTheme.termBg
@@ -764,6 +772,45 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
         }
 
         return event
+    }
+
+    private var scrollAccumulator: CGFloat = 0
+
+    private func handleScrollWheel(_ event: NSEvent) -> NSEvent? {
+        guard let window = window, window.isKeyWindow else { return event }
+        guard let term = activeTerminal, !term.isHidden else { return event }
+        guard term.canScroll == false else { return event }
+        guard event.deltaY != 0 else { return event }
+
+        let pointInTerm = term.convert(event.locationInWindow, from: nil)
+        guard term.bounds.contains(pointInTerm) else { return event }
+
+        if event.phase == .began || event.momentumPhase == .began {
+            scrollAccumulator = 0
+        }
+
+        scrollAccumulator += event.deltaY
+        let threshold: CGFloat = 1.0
+
+        guard abs(scrollAccumulator) >= threshold else { return nil }
+
+        let steps = Int(abs(scrollAccumulator) / threshold)
+        scrollAccumulator -= CGFloat(steps) * threshold * (scrollAccumulator > 0 ? 1 : -1)
+
+        let upSeq: [UInt8] = [0x1b, 0x5b, 0x35, 0x7e]
+        let downSeq: [UInt8] = [0x1b, 0x5b, 0x36, 0x7e]
+
+        if event.deltaY > 0 {
+            for _ in 0..<steps {
+                term.process.send(data: ArraySlice(upSeq))
+            }
+        } else {
+            for _ in 0..<steps {
+                term.process.send(data: ArraySlice(downSeq))
+            }
+        }
+
+        return nil
     }
 
     // MARK: - NSSplitViewDelegate

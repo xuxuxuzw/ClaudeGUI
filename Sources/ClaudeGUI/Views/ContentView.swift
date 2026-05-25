@@ -10,25 +10,27 @@ struct ContentView: View {
                 .frame(minWidth: 200, idealWidth: 240, maxWidth: 300)
 
             // Right — terminal area
-            ZStack {
-                if sessionManager.sessions.isEmpty {
-                    WelcomeView {
-                        sessionManager.createSession()
-                    }
-                } else if let activeId = sessionManager.activeSessionId {
-                    // Render all terminals, only show the active one
-                    ForEach(sessionManager.sessions) { session in
-                        TerminalViewRepresentable(
-                            sessionId: session.id,
-                            workingDirectory: session.workingDirectory,
-                            isActive: session.id == activeId
-                        )
-                        .opacity(session.id == activeId ? 1 : 0)
-                        .allowsHitTesting(session.id == activeId)
+            GeometryReader { geometry in
+                ZStack {
+                    if sessionManager.sessions.isEmpty {
+                        WelcomeView {
+                            sessionManager.createSession()
+                        }
+                    } else if let activeId = sessionManager.activeSessionId {
+                        ForEach(sessionManager.sessions) { session in
+                            TerminalViewRepresentable(
+                                sessionId: session.id,
+                                workingDirectory: session.workingDirectory,
+                                isActive: session.id == activeId
+                            )
+                            .frame(width: geometry.size.width, height: geometry.size.height)
+                            .opacity(session.id == activeId ? 1 : 0)
+                            .allowsHitTesting(session.id == activeId)
+                        }
                     }
                 }
+                .frame(width: geometry.size.width, height: geometry.size.height)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
