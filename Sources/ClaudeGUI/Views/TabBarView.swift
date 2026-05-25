@@ -276,13 +276,14 @@ struct SidebarSessionView: View {
     // MARK: - Session Group
 
     @State private var expandedGroups: Set<String> = ["awaiting", "working", "completed", "idle"]
-    @State private var collapsedWorkspaces: Set<String> = []
+    @State private var expandedWorkspaces: Set<String> = []
+    @State private var expandedRelatedDirs: Set<String> = []
 
     // MARK: - Workspace Section
 
     @ViewBuilder
     private func workspaceSection(workspace: Workspace) -> some View {
-        let isExpanded = !collapsedWorkspaces.contains(workspace.path)
+        let isExpanded = expandedWorkspaces.contains(workspace.path)
         let totalSessions = workspace.sessions.count
 
         VStack(spacing: 0) {
@@ -290,9 +291,9 @@ struct SidebarSessionView: View {
             Button(action: {
                 sessionManager.activeWorkspacePath = workspace.path
                 if isExpanded {
-                    collapsedWorkspaces.insert(workspace.path)
+                    expandedWorkspaces.remove(workspace.path)
                 } else {
-                    collapsedWorkspaces.remove(workspace.path)
+                    expandedWorkspaces.insert(workspace.path)
                 }
             }) {
                 HStack(spacing: 6) {
@@ -381,29 +382,55 @@ struct SidebarSessionView: View {
 
                 // Related dirs display
                 if !workspace.relatedDirs.isEmpty {
+                    let dirKey = "\(workspace.path)/relatedDirs"
+                    let isRelatedDirsExpanded = expandedRelatedDirs.contains(dirKey)
+
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(localization.current == .chinese ? "关联目录:" : "Related dirs:")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(AppTheme.textMuted)
-                        ForEach(workspace.relatedDirs, id: \.self) { dir in
+                        Button(action: {
+                            if isRelatedDirsExpanded {
+                                expandedRelatedDirs.remove(dirKey)
+                            } else {
+                                expandedRelatedDirs.insert(dirKey)
+                            }
+                        }) {
                             HStack(spacing: 4) {
-                                Image(systemName: "folder")
-                                    .font(.system(size: 9))
+                                Text(localization.current == .chinese ? "关联目录" : "Related dirs")
+                                    .font(.system(size: 11, weight: .medium))
                                     .foregroundStyle(AppTheme.textMuted)
-                                Text(URL(fileURLWithPath: dir).lastPathComponent)
-                                    .font(.system(size: 11, design: .monospaced))
+                                Text("(\(workspace.relatedDirs.count))")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(AppTheme.textMuted.opacity(0.6))
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 9, weight: .medium))
                                     .foregroundStyle(AppTheme.textMuted)
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
+                                    .rotationEffect(.degrees(isRelatedDirsExpanded ? 90 : 0))
                             }
                             .contentShape(Rectangle())
-                            .onTapGesture(count: 2) {
-                                NSPasteboard.general.clearContents()
-                                NSPasteboard.general.setString(dir, forType: .string)
-                                toastMessage = localization.current == .chinese ? "已复制!" : "Copied!"
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { toastMessage = nil }
+                        }
+                        .buttonStyle(.plain)
+
+                        if isRelatedDirsExpanded {
+                            ForEach(workspace.relatedDirs, id: \.self) { dir in
+                                HStack(spacing: 4) {
+                                    Image(systemName: "folder")
+                                        .font(.system(size: 9))
+                                        .foregroundStyle(AppTheme.textMuted)
+                                    Text(URL(fileURLWithPath: dir).lastPathComponent)
+                                        .font(.system(size: 11, design: .monospaced))
+                                        .foregroundStyle(AppTheme.textMuted)
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
+                                }
+                                .contentShape(Rectangle())
+                                .onTapGesture(count: 2) {
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString(dir, forType: .string)
+                                    toastMessage = localization.current == .chinese ? "已复制!" : "Copied!"
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { toastMessage = nil }
+                                }
+                                .help(localization.current == .chinese ? "双击复制路径" : "Double-click to copy path")
                             }
-                            .help(localization.current == .chinese ? "双击复制路径" : "Double-click to copy path")
                         }
                     }
                     .padding(.horizontal, 22)
