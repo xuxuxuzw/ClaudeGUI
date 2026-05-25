@@ -1,0 +1,45 @@
+[URL_DEBUG] NSWorkspace.open swizzled successfully
+Cannot index window tabs due to missing main bundle identifier
+[DragDropTerminalView] URL debug delegate installed — will log requestOpenLink calls
+[DragDropTerminalView] init — linkHighlightMode=hoverWithModifier
+Unable to obtain a task name port right for pid 423: (os/kern) failure (0x5)
+[MouseEvent] mouseEntered on terminal — hasCmd=false
+[MouseEvent] cursorUpdate on terminal
+[MouseEvent] mouseEntered on terminal — hasCmd=false
+Info: Unhandled DEC Private Mode Set (DECSET) with 2031
+[DragDropTerminalView] send to process — data="\^[[?65;4;1;2;6;21;22;17;28c"
+[MouseEvent] mouseExited on terminal
+[MouseEvent] mouseEntered on terminal — hasCmd=false
+[MouseEvent] mouseEntered on terminal — hasCmd=false
+[MouseEvent] mouseExited on terminal
+[MouseEvent] cursorUpdate on terminal
+[MouseEvent] cursorUpdate on terminal
+[MouseEvent] mouseEntered on terminal — hasCmd=false
+[MouseEvent] mouseExited on terminal
+[MouseEvent] mouseEntered on terminal — hasCmd=false
+ViewBridge to RemoteViewService Terminated: Error Domain=com.apple.ViewBridge Code=18 "(null)" UserInfo={com.apple.ViewBridge.error.hint=this process disconnected remote view controller -- benign unless unexpected, com.apple.ViewBridge.error.description=NSViewBridgeErrorCanceled}
+[MouseEvent] mouseExited on terminal
+[MouseEvent] cursorUpdate on terminal
+[MouseEvent] mouseEntered on terminal — hasCmd=false
+[MouseEvent] mouseEntered on terminal — hasCmd=false
+[MouseEvent] mouseExited on terminal
+[MouseEvent] mouseExited on terminal
+[MouseEvent] mouseExited on terminal
+[MouseEvent] mouseEntered on terminal — hasCmd=false
+[MouseEvent] cursorUpdate on terminal
+[MouseEvent] mouseEntered on terminal — hasCmd=false
+[MouseEvent] mouseEntered on terminal — hasCmd=false
+[DragDropTerminalView] URL debug delegate installed — will log requestOpenLink calls
+[DragDropTerminalView] init — linkHighlightMode=hoverWithModifier
+[DragDropTerminalView] send to process — data="\^[[O"
+Info: Unhandled DEC Private Mode Set (DECSET) with 2031
+[DragDropTerminalView] send to process — data="\^[[?65;4;1;2;6;21;22;17;28c"
+[MouseEvent] mouseExited on terminal
+[MouseEvent] cursorUpdate on terminal
+[MouseEvent] mouseEntered on terminal — hasCmd=false
+[MouseEvent] mouseEntered on terminal — hasCmd=false
+[MouseEvent] mouseEntered on terminal — hasCmd=false
+[MouseEvent] cursorUpdate on terminal
+[MouseEvent] mouseEntered on terminal — hasCmd=false
+[MouseEvent] mouseEntered on terminal — hasCmd=false
+FSFindFolder failed with error=-43

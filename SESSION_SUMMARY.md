@@ -232,3 +232,79 @@ ditto /DerivedData/.../Release/ClaudeGUI.app /path/to/ClaudeGUI.app
 | 覆盖 app bundle | `cp -R src.app dst.app` | `rm -rf dst.app && ditto src.app dst.app` |
 | 验证功能是否编译进 | `strings \| grep`（对 Swift 字符串不可靠） | `nm \| grep` 查符号表 |
 | 清缓存重编译 | 直接 rebuild | `rm -rf DerivedData` → rebuild |
+
+---
+
+# 会话总结 (2026-05-26) — 鼠标悬停 URL 自动打开浏览器问题
+
+## 问题描述
+
+当会话窗口中显示 URL 链接时，仅将鼠标移入 URL 区域，浏览器就会自动打开该链接。用户没有点击，也没有按 Cmd 键，但 URL 被自动打开。
+
+## 排查过程
+
+### 第一阶段：怀疑 SwiftTerm 的 requestOpenLink
+
+在 `DragDropTerminalView` 中添加 `URLDebugDelegate` 拦截 `requestOpenLink` 调用，同时在 `MainWindowController` 中添加 `NSEvent.addLocalMonitorForEvents` 监控鼠标事件。
+
+**结果**：`requestOpenLink` 从未被调用，排除了 SwiftTerm 的链接点击机制。
+
+### 第二阶段：怀疑应用代码调用了 NSWorkspace.shared.open
+
+在 `ClaudeGUIApp` 中使用 Method Swizzle 拦截 `NSWorkspace.shared.open(_:)`，记录调用栈。
+
+**结果**：`NSWorkspace.shared.open` 从未被调用，排除了 ClaudeGUI 进程自身打开 URL 的可能。
+
+### 第三阶段：发现终端鼠标追踪模式
+
+在 SwiftTerm 的 `mouseMoved` 方法中添加日志后，发现每次鼠标移动都在向子进程发送 SGR 鼠标报告序列（`\e[<32;col;rowm`）。这说明 `claude` CLI 开启了终端鼠标追踪模式（SGR Mouse Tracking），SwiftTerm 每次鼠标移动都会把坐标发给子进程。
+
+### 第四阶段：验证根因
+
+在 SwiftTerm 的 `mouseMoved` 方法中注释掉 `terminal.sendMotion()` 调用，禁止向子进程发送鼠标移动事件。
+
+**结果**：浏览器不再自动打开，问题消失。
+
+## 根因
+
+**`claude` CLI 开启了终端鼠标追踪模式（SGR Mouse Tracking），收到鼠标悬停在 URL 上的坐标后，自己执行了 `open URL` 命令打开浏览器。**
+
+整个流程：
+1. `claude` CLI 向终端发送 `\e[?1003h` 启用鼠标追踪模式
+2. 用户移动鼠标 → SwiftTerm 通过 PTY 将鼠标坐标发送给 `claude` CLI
+3. `claude` CLI 检测到鼠标悬停在 URL 上 → 执行 `open https://...` 命令
+4. `open` 命令是 `claude` CLI 子进程 spawn 的独立进程，完全绕过 ClaudeGUI 的代码
+
+这解释了为什么：
+- `requestOpenLink` 没被调用（不是 SwiftTerm 打开的）
+- `NSWorkspace.shared.open` 没被调用（不是 ClaudeGUI 进程打开的）
+- 拦截用户输入事件后问题消失（子进程收不到鼠标事件了）
+- macOS 终端没有这个问题（macOS 终端是纯文本渲染，不发送鼠标追踪事件给子进程）
+
+## 修复
+
+在 SwiftTerm 的 `MacTerminalView.swift` 的 `mouseMoved` 方法中，注释掉向子进程发送鼠标移动事件的代码：
+
+```swift
+// Disabled: sending mouse motion events to the child process causes
+// the claude CLI to auto-open URLs when the mouse hovers over them.
+// if terminal.mouseMode.sendMotionEvent() {
+//     let flags = encodeMouseEvent(with: event, overwriteRelease: true)
+//     terminal.sendMotion(buttonFlags: flags, x: hit.grid.col, y: hit.grid.row, pixelX: hit.pixels.col, pixelY: hit.pixels.row)
+// }
+```
+
+## 涉及文件
+
+| 文件 | 修改内容 |
+|------|---------|
+| `MacTerminalView.swift`（SwiftTerm 包） | 注释掉 `mouseMoved` 中的 `terminal.sendMotion()` 调用 |
+| `ClaudeGUIApp.swift` | 清理 NSWorkspace swizzle 调试代码（已还原） |
+| `DragDropTerminalView.swift` | 清理 URLDebugDelegate 和 send 日志（已还原） |
+| `MainWindowController.swift` | 清理鼠标事件监控日志（已还原） |
+
+## 注意事项
+
+- 此修复禁用了终端向子进程发送鼠标移动事件，可能影响依赖鼠标追踪的其他 CLI 工具（如 `htop`、`vim` 的鼠标模式等）
+- 鼠标点击事件（`mouseDown`/`mouseUp`）仍然正常发送，不影响文本选择和点击交互
+- 如果未来需要恢复鼠标追踪功能，可以考虑更精细的方案：仅在检测到 URL 区域时阻止发送，或让用户自行开关

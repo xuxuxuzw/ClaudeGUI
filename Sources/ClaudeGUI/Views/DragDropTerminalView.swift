@@ -13,6 +13,8 @@ class DragDropTerminalView: LocalProcessTerminalView {
         setupDragDrop()
     }
 
+    // MARK: - Drag & Drop
+
     private func setupDragDrop() {
         registerForDraggedTypes([.fileURL])
     }
