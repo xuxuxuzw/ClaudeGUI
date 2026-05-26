@@ -286,11 +286,20 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
     private struct NewSessionDialogContent: View {
         @Binding var taskText: String
         @Binding var directoryURL: URL
-        @Binding var permissionMode: PermissionMode
+        @State private var permissionMode: PermissionMode
         @ObservedObject var localization = Localization.shared
-        let onSubmit: () -> Void
+        let onSubmit: (PermissionMode) -> Void
         let onCancel: () -> Void
         let onBrowse: () -> Void
+
+        init(taskText: Binding<String>, directoryURL: Binding<URL>, permissionMode: PermissionMode, onSubmit: @escaping (PermissionMode) -> Void, onCancel: @escaping () -> Void, onBrowse: @escaping () -> Void) {
+            self._taskText = taskText
+            self._directoryURL = directoryURL
+            self._permissionMode = State(initialValue: permissionMode)
+            self.onSubmit = onSubmit
+            self.onCancel = onCancel
+            self.onBrowse = onBrowse
+        }
 
         private let surface = AppTheme.bgSurface
         private let surfaceAlt = AppTheme.bgElevated
@@ -323,7 +332,7 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
                         font: .systemFont(ofSize: 13),
                         textColor: NSColor(textPrimary),
                         placeholderColor: NSColor(AppTheme.textMuted),
-                        onSubmit: { onSubmit() }
+                        onSubmit: { onSubmit(permissionMode) }
                     )
                     .frame(height: 20)
                     .padding(10)
@@ -333,7 +342,7 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
                             RoundedRectangle(cornerRadius: AppRadius.lg)
                                 .stroke(border, lineWidth: 1)
                         )
-                        .onSubmit { onSubmit() }
+                        .onSubmit { onSubmit(permissionMode) }
                 }
                 .padding(.bottom, 16)
 
@@ -380,17 +389,38 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(textSecondary)
                         Spacer()
-                        Picker("", selection: $permissionMode) {
+                        Menu {
                             ForEach(PermissionMode.allCases, id: \.self) { mode in
-                                Text(mode.displayName).tag(mode)
+                                Button(action: { permissionMode = mode }) {
+                                    HStack {
+                                        Text(mode.displayName)
+                                        if permissionMode == mode {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
                             }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(permissionMode.displayName)
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(textPrimary)
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(textSecondary.opacity(0.5))
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(surface)
+                            .clipShape(RoundedRectangle(cornerRadius: AppRadius.md))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppRadius.md)
+                                    .stroke(border, lineWidth: 1)
+                            )
                         }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                        .frame(width: 220)
-                        .onChange(of: permissionMode) { newMode in
-                            newMode.persistAsDefault()
-                        }
+                        .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
+                        .fixedSize()
                     }
                     Text(L10n.permissionModeDesc)
                         .font(.system(size: 10))
@@ -417,7 +447,7 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
                             .stroke(border, lineWidth: 1)
                     )
 
-                    Button(action: { onSubmit() }) {
+                    Button(action: { onSubmit(permissionMode) }) {
                         HStack(spacing: 6) {
                             Image(systemName: "play.fill")
                                 .font(.system(size: 10))
@@ -446,7 +476,6 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
     private class NewSessionState: ObservableObject {
         @Published var taskText = ""
         @Published var directoryURL = FileManager.default.homeDirectoryForCurrentUser
-        @Published var permissionMode: PermissionMode = PermissionMode.persistedDefault()
     }
 
     private func launchNewSession() {
@@ -455,7 +484,7 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
             state.directoryURL = URL(fileURLWithPath: wsPath)
         }
 
-        func submit() {
+        func submit(mode: PermissionMode) {
             let task = state.taskText.trimmingCharacters(in: .whitespacesAndNewlines)
             newSessionDialogWindow?.close()
             newSessionDialogWindow = nil
@@ -464,7 +493,8 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
             let claudePath = getClaudePath()
             let addDirArgs = sessionManager.addDirArguments(for: directory)
             let addDirString = addDirArgs.joined(separator: " ")
-            let permissionFlag = state.permissionMode == .default ? "" : " \(state.permissionMode.cliFlag)"
+            let permissionFlag = mode == .default ? "" : " \(mode.cliFlag)"
+
             let cmd: String
             if task.isEmpty {
                 cmd = "\(claudePath) --bg\(permissionFlag)\(addDirString.isEmpty ? "" : " \(addDirString)")"
@@ -557,14 +587,15 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
 
     private func presentNewSessionDialog(
         state: NewSessionState,
-        onSubmit: @escaping () -> Void,
+        onSubmit: @escaping (PermissionMode) -> Void,
         onCancel: @escaping () -> Void,
         onBrowse: @escaping () -> Void
     ) {
+        let initialMode = PermissionMode.default
         let content = NewSessionDialogContent(
             taskText: Binding(get: { state.taskText }, set: { state.taskText = $0 }),
             directoryURL: Binding(get: { state.directoryURL }, set: { state.directoryURL = $0 }),
-            permissionMode: Binding(get: { state.permissionMode }, set: { state.permissionMode = $0 }),
+            permissionMode: initialMode,
             onSubmit: onSubmit,
             onCancel: onCancel,
             onBrowse: onBrowse

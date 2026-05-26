@@ -111,3 +111,4 @@ ClaudeGUI/
 | 终端无法滚动 | claude CLI 使用 alternate screen buffer，scrollback 为 nil | MainWindowController handleScrollWheel |
 | 终端初始化零尺寸 | terminalContainer.bounds 在 init 时为 .zero | MainWindowController makeTerminal 兜底帧 |
 | 无法选中文字 | allowMouseReporting=true 导致鼠标事件转发给 PTY | DragDropTerminalView allowMouseReporting=false |
+| 首次使用 auto 权限模式创建会话失败 | claude CLI 首次 `--permission-mode auto` 会要求用户确认权限问题，确认后才允许后续使用 | 非 Bug，需先手动在终端执行一次 `claude --permission-mode auto` 确认权限 |
