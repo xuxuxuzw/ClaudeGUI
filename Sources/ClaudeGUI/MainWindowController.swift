@@ -889,25 +889,21 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
     // MARK: - Export Session Content
 
     private func exportSessionContent(sessionId: UUID) {
-        let idString = sessionId.uuidString.lowercased()
-
-        // Find the agent session to get cwd for locating the JSONL file
-        guard let agent = agentSessions.first(where: { $0.sessionId.lowercased() == idString }) else {
+        // Look up the session from sessionManager (has workingDirectory)
+        guard let session = sessionManager.sessions.first(where: { $0.id == sessionId }) else {
+            NSLog("ClaudeGUI: export failed - session not found in sessionManager")
             return
         }
 
-        // Build the project directory path: ~/.claude/projects/{encoded-cwd}/{sessionId}.jsonl
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        let encodedCwd = agent.cwd.replacingOccurrences(of: "/", with: "-")
-        let jsonlPath = "\(home)/.claude/projects/\(encodedCwd)/\(agent.sessionId).jsonl"
+        let jsonlPath = findJSONLPath(cwd: session.workingDirectory, uuid: sessionId)
 
-        guard FileManager.default.fileExists(atPath: jsonlPath) else { return }
+        guard let path = jsonlPath,
+              let text = parseConversationJSONL(at: path),
+              !text.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty else {
+            NSLog("ClaudeGUI: export failed - no JSONL content for session %@", sessionId.uuidString)
+            return
+        }
 
-        // Parse the JSONL file and extract conversation text
-        guard let text = parseConversationJSONL(at: jsonlPath),
-              !text.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty else { return }
-
-        // Show save panel
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.plainText]
         panel.nameFieldStringValue = "\(L10n.exportFileName).md"
@@ -920,6 +916,37 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
         } catch {
             NSLog("ClaudeGUI: export error: %@", error.localizedDescription)
         }
+    }
+
+    /// Find the JSONL file path for a session. Tries exact encoding first,
+    /// then falls back to scanning all project directories.
+    private func findJSONLPath(cwd: String, uuid: UUID) -> String? {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let projectsDir = "\(home)/.claude/projects"
+
+        let filenames = [uuid.uuidString, uuid.uuidString.lowercased(),
+                         uuid.uuidString.uppercased()]
+
+        // Try exact cwd encoding
+        let encodedCwd = cwd.replacingOccurrences(of: "/", with: "-")
+        let exactDir = "\(projectsDir)/\(encodedCwd)"
+        for name in filenames {
+            let p = "\(exactDir)/\(name).jsonl"
+            if FileManager.default.fileExists(atPath: p) { return p }
+        }
+
+        // Fallback: scan all project directories for the matching UUID
+        guard let entries = try? FileManager.default.contentsOfDirectory(atPath: projectsDir) else {
+            return nil
+        }
+        for entry in entries {
+            for name in filenames {
+                let p = "\(projectsDir)/\(entry)/\(name).jsonl"
+                if FileManager.default.fileExists(atPath: p) { return p }
+            }
+        }
+
+        return nil
     }
 
     /// Parse a claude conversation JSONL file and return formatted text.
