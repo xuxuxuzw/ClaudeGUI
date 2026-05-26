@@ -226,7 +226,7 @@ activeTerminal     →  当前显示的终端引用
 - shortId 等宽字体显示
 - 活跃会话右侧有蓝色竖条指示
 - 整行可点击切换
-- 右键弹出菜单：停止会话 / 删除会话
+- 右键弹出菜单：导出内容 / 停止会话 / 删除会话
 
 ## 8. 新建会话弹窗
 
@@ -360,3 +360,52 @@ Clear Dark 和 Clear Light 的配色取自 macOS Terminal.app 的同名方案。
 2. 在 `AppTheme` 每个计算属性的 switch 中添加对应色值
 3. 在 `themeName()` 函数中添加中英文名称
 4. 更新 DESIGN.md 中的色值表
+
+## 14. 导出会话内容
+
+### 14.1 触发方式
+
+右键点击侧边栏会话行 → 选择「导出内容」→ 弹出 NSSavePanel → 保存为 `.md` 文件
+
+### 14.2 数据来源
+
+不依赖终端 buffer（alternate screen buffer 无 scrollback），而是直接读取 Claude 本地存储的会话 JSONL 文件：
+
+```
+~/.claude/projects/{encoded-cwd}/{sessionId}.jsonl
+```
+
+其中 `encoded-cwd` 是工作目录路径将 `/` 替换为 `-` 后的结果，例如 `/Users/dev/project` → `-Users-dev-project`。
+
+### 14.3 JSONL 解析
+
+每行是一个 JSON 对象，关键字段：
+
+| type | 说明 |
+|------|------|
+| `user` / `human` | 用户消息，`message.content` 包含文本 |
+| `assistant` | 助手回复，`message.content` 为数组，含 `type: "text"` 的项 |
+| `summary` | 会话摘要，`summary` 字段为文本 |
+
+### 14.4 导出格式
+
+```markdown
+=== User ===
+用户输入的文本
+
+=== Assistant ===
+助手回复的文本
+
+=== Summary ===
+会话摘要
+```
+
+### 14.5 回调链
+
+```
+TabBarView 右键菜单 → SidebarCallback.onExport(UUID)
+    → MainWindowController.exportSessionContent(sessionId:)
+    → 查找 AgentSession → 构建 JSONL 路径
+    → parseConversationJSONL() → extractText()
+    → NSSavePanel → 写入文件
+```

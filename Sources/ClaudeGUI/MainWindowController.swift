@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import SwiftTerm
+import UniformTypeIdentifiers
 
 /// A single agent session from `claude agents --json`.
 struct AgentSession: Codable, Identifiable {
@@ -27,6 +28,7 @@ class SidebarCallback: ObservableObject {
     var onMountWorkspace: ((String) -> Void)?  // workspace path
     var onUnmountWorkspace: ((String) -> Void)?  // workspace path
     var onCyclePermissionMode: (() -> Void)?
+    var onExport: ((UUID) -> Void)?
 }
 
 class MainWindowController: NSWindowController, NSSplitViewDelegate {
@@ -140,6 +142,9 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
         }
         sidebarCallback.onCyclePermissionMode = { [weak self] in
             self?.cyclePermissionMode()
+        }
+        sidebarCallback.onExport = { [weak self] sessionId in
+            self?.exportSessionContent(sessionId: sessionId)
         }
     }
 
@@ -879,5 +884,100 @@ class MainWindowController: NSWindowController, NSSplitViewDelegate {
             }
         }
         return "claude"
+    }
+
+    // MARK: - Export Session Content
+
+    private func exportSessionContent(sessionId: UUID) {
+        let idString = sessionId.uuidString.lowercased()
+
+        // Find the agent session to get cwd for locating the JSONL file
+        guard let agent = agentSessions.first(where: { $0.sessionId.lowercased() == idString }) else {
+            return
+        }
+
+        // Build the project directory path: ~/.claude/projects/{encoded-cwd}/{sessionId}.jsonl
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let encodedCwd = agent.cwd.replacingOccurrences(of: "/", with: "-")
+        let jsonlPath = "\(home)/.claude/projects/\(encodedCwd)/\(agent.sessionId).jsonl"
+
+        guard FileManager.default.fileExists(atPath: jsonlPath) else { return }
+
+        // Parse the JSONL file and extract conversation text
+        guard let text = parseConversationJSONL(at: jsonlPath),
+              !text.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty else { return }
+
+        // Show save panel
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.plainText]
+        panel.nameFieldStringValue = "\(L10n.exportFileName).md"
+        panel.canCreateDirectories = true
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        do {
+            try text.write(to: url, atomically: true, encoding: String.Encoding.utf8)
+        } catch {
+            NSLog("ClaudeGUI: export error: %@", error.localizedDescription)
+        }
+    }
+
+    /// Parse a claude conversation JSONL file and return formatted text.
+    private func parseConversationJSONL(at path: String) -> String? {
+        guard let data = FileManager.default.contents(atPath: path) else { return nil }
+        guard let content = String(data: data, encoding: .utf8) else { return nil }
+
+        var result = ""
+        let lines = content.components(separatedBy: "\n")
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty, let lineData = trimmed.data(using: .utf8) else { continue }
+            guard let obj = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any] else { continue }
+
+            let type = obj["type"] as? String ?? ""
+
+            if type == "user" || type == "human" {
+                if let msg = obj["message"] as? [String: Any],
+                   let content = msg["content"] {
+                    let text = extractText(from: content)
+                    if !text.isEmpty {
+                        result += "=== User ===\n\(text)\n\n"
+                    }
+                }
+            } else if type == "assistant" {
+                if let msg = obj["message"] as? [String: Any],
+                   let content = msg["content"] {
+                    let text = extractText(from: content)
+                    if !text.isEmpty {
+                        result += "=== Assistant ===\n\(text)\n\n"
+                    }
+                }
+            } else if type == "summary" {
+                if let summary = obj["summary"] as? String, !summary.isEmpty {
+                    result += "=== Summary ===\n\(summary)\n\n"
+                }
+            }
+        }
+
+        return result
+    }
+
+    /// Extract text from a message content field (can be String or [[String: Any]]).
+    private func extractText(from content: Any) -> String {
+        if let str = content as? String {
+            return str
+        }
+        if let arr = content as? [[String: Any]] {
+            var texts: [String] = []
+            for item in arr {
+                if item["type"] as? String == "text",
+                   let text = item["text"] as? String, !text.isEmpty {
+                    texts.append(text)
+                }
+            }
+            return texts.joined(separator: "\n")
+        }
+        return ""
     }
 }

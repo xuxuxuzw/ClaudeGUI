@@ -109,6 +109,12 @@ enum L10n {
     static var deleteSession: String {
         Localization.shared.current == .chinese ? "删除会话" : "Delete Session"
     }
+    static var exportContent: String {
+        Localization.shared.current == .chinese ? "导出内容" : "Export Content"
+    }
+    static var exportFileName: String {
+        Localization.shared.current == .chinese ? "会话内容" : "Session Content"
+    }
 
     // Welcome
     static var welcomeSubtitle: String {

@@ -11,8 +11,8 @@
 ### Release 构建步骤
 
 ```bash
-# 1. 编译
-xcodebuild -scheme ClaudeGUI -configuration Release clean build
+# 1. 编译（-skipPackageUpdates 避免网络问题，使用本地 SwiftTerm）
+xcodebuild -scheme ClaudeGUI -configuration Release clean build -skipPackageUpdates
 
 # 2. 找到 DerivedData 路径
 DERIVED=$(find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -name "ClaudeGUI-*" -type d | head -1)
@@ -37,7 +37,7 @@ set -e
 cd "$(dirname "$0")"
 
 # Build
-xcodebuild -scheme ClaudeGUI -configuration Release clean build
+xcodebuild -scheme ClaudeGUI -configuration Release clean build -skipPackageUpdates
 
 # Find DerivedData
 DERIVED=$(find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -name "ClaudeGUI-*" -type d | head -1)
@@ -61,6 +61,28 @@ echo "Build complete: ./ClaudeGUI.app"
 - **不要用 `cp -R` 覆盖 app bundle**：macOS bundle 是目录结构，`cp -R` 可能只替换部分文件。用 `rm -rf` + `ditto`
 - **Info.plist 图标问题**：xcodebuild 可能不自动写入 `CFBundleIconFile`，需要手动添加
 - **LocalSwiftTerm 目录**：包含项目自定义补丁，不要删除。如需升级 SwiftTerm，在 `LocalSwiftTerm` 目录中 `git fetch upstream && git rebase` 后重新应用补丁
+- **project.pbxproj 包引用**：`ClaudeGUI.xcodeproj/project.pbxproj` 中必须使用 `XCLocalSwiftPackageReference` 指向 `./LocalSwiftTerm`，而不是 `XCRemoteSwiftPackageReference`。如果用 Xcode IDE 重新添加过 SwiftTerm 依赖，需要手动改回本地引用。
+
+### Xcode IDE 重新添加依赖后手动恢复方法
+
+如果在 Xcode IDE 中删掉并重新添加了 SwiftTerm 依赖，`project.pbxproj` 会被改回远程引用，导致命令行构建使用未打补丁的原始 SwiftTerm（鼠标悬停自动打开浏览器）。修复步骤如下：
+
+1. 打开 `ClaudeGUI.xcodeproj/project.pbxproj`
+2. 将 `XCRemoteSwiftPackageReference section` 整个块替换为：
+```
+/* Begin XCLocalSwiftPackageReference section */
+		E7B6C30012345678 /* XCLocalSwiftPackageReference "SwiftTerm" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ./LocalSwiftTerm;
+		};
+/* End XCLocalSwiftPackageReference section */
+```
+3. 在 `XCSwiftPackageProductDependency section` 块中，将 `package = E7B6C30012345678 /* XCRemoteSwiftPackageReference "SwiftTerm" */;` 改为 `package = E7B6C30012345678 /* XCLocalSwiftPackageReference "SwiftTerm" */;`
+4. 在 `packageReferences` 列表中，将 `E7B6C30012345678 /* XCRemoteSwiftPackageReference "SwiftTerm" */,` 改为 `E7B6C30012345678 /* XCLocalSwiftPackageReference "SwiftTerm" */,`
+5. 删除旧的 SPM 解析缓存：
+```bash
+rm -f ClaudeGUI.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+```
 
 ## 项目结构
 

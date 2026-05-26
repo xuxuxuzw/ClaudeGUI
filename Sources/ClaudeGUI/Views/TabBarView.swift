@@ -570,6 +570,12 @@ struct SidebarSessionView: View {
         .buttonStyle(.plain)
         .contextMenu {
             Button(action: {
+                callback.onExport?(session.id)
+            }) {
+                Label(L10n.exportContent, systemImage: "square.and.arrow.up")
+            }
+
+            Button(action: {
                 callback.onStop?(session.id)
             }) {
                 Label(L10n.stopSession, systemImage: "stop.circle")
